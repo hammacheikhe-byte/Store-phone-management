@@ -4,6 +4,7 @@
 
 const APP_VERSION = "3.0.0-PRO";
 const STORAGE_KEY = "phone_store_pro_state_v3";
+const AUTH_KEY = "phone_store_pro_user_session";
 
 // Currency Formatter Helper
 const CurrencyFormatter = {
@@ -15,6 +16,7 @@ const CurrencyFormatter = {
 
 // Global Application State
 let AppState = {
+  isInitialized: false,
   settings: {
     storeName: "متجر الهواتف الذهبي - PHONE STORE PRO",
     storeLogo: "",
@@ -29,14 +31,13 @@ let AppState = {
     lowStockThreshold: 3,
     language: "ar",
     theme: "dark",
-    primaryColor: "#3b82f6"
+    primaryColor: "#3b82f6",
+    adminPassword: "1234",
+    githubToken: "",
+    githubRepo: "Store-phone-management",
+    githubUser: "hammacheikhe-byte"
   },
-  currentUser: {
-    id: "usr_admin",
-    name: "المدير العام (Admin)",
-    username: "admin",
-    role: "Admin"
-  },
+  currentUser: null,
   phones: [],
   accessories: [],
   suppliers: [],
@@ -55,8 +56,10 @@ let AppState = {
 const DataRepository = {
   init() {
     this.loadState();
-    if (!AppState.phones.length && !AppState.accessories.length) {
+    // Only generate seed data on very first launch if system was never initialized
+    if (!AppState.isInitialized && !AppState.phones.length && !AppState.accessories.length) {
       SeedDataEngine.generateSeedData();
+      AppState.isInitialized = true;
       this.saveState();
     }
   },
@@ -93,7 +96,7 @@ const DataRepository = {
   },
 
   purgeAllData() {
-    localStorage.removeItem(STORAGE_KEY);
+    AppState.isInitialized = true;
     AppState.phones = [];
     AppState.accessories = [];
     AppState.suppliers = [];
@@ -104,8 +107,15 @@ const DataRepository = {
     AppState.expenses = [];
     AppState.partners = [];
     AppState.auditLogs = [];
+    this.saveState();
+    AuditLogEngine.log("تصفير الشامل", "تم تصفير كافة البيانات والجداول بنجاح وجعل قاعدة البيانات فارغة تماماً.");
+  },
+
+  restoreDemoData() {
+    AppState.isInitialized = true;
     SeedDataEngine.generateSeedData();
     this.saveState();
+    AuditLogEngine.log("استعادة البيانات التجريبية", "تمت استعادة البيانات التجريبية الأولية للنظام.");
   }
 };
 
@@ -374,7 +384,7 @@ const POSCartEngine = {
       customerId: saleDetails.customerId || "cust_cash",
       customerName: saleDetails.customerName || "عميل نقدي",
       customerPhone: saleDetails.customerPhone || "-",
-      employeeName: AppState.currentUser.name,
+      employeeName: AppState.currentUser ? AppState.currentUser.name : "الكاشير",
       items: this.cart.map(item => ({
         productId: item.id,
         name: item.name,
@@ -419,6 +429,12 @@ const POSCartEngine = {
     AppState.sales.unshift(newSale);
     AuditLogEngine.log("إتمام عملية بيع", `الفاتورة ${invoiceNo} بقيمة ${CurrencyFormatter.format(total, AppState.settings.currency)}.`);
     DataRepository.saveState();
+
+    // Background Cloud Sync if GitHub Token exists
+    if (AppState.settings.githubToken) {
+      UIController.syncWithGitHubCloud(true);
+    }
+
     this.clearCart();
     return newSale;
   }
@@ -743,6 +759,9 @@ const RenderEngine = {
     if (document.getElementById("setStoreAddress")) document.getElementById("setStoreAddress").value = s.storeAddress;
     if (document.getElementById("setCurrency")) document.getElementById("setCurrency").value = s.currency;
     if (document.getElementById("setTheme")) document.getElementById("setTheme").value = s.theme;
+    if (document.getElementById("setAdminPassword")) document.getElementById("setAdminPassword").value = s.adminPassword || "1234";
+    if (document.getElementById("setGithubToken")) document.getElementById("setGithubToken").value = s.githubToken || "";
+    if (document.getElementById("setGithubRepo")) document.getElementById("setGithubRepo").value = s.githubRepo || "Store-phone-management";
   }
 };
 
@@ -752,8 +771,142 @@ const RenderEngine = {
 const UIController = {
   init() {
     DataRepository.init();
+    this.checkAuthentication();
     RenderEngine.init();
     POSCartEngine.recalculate();
+  },
+
+  checkAuthentication() {
+    const session = sessionStorage.getItem(AUTH_KEY);
+    if (session) {
+      try {
+        AppState.currentUser = JSON.parse(session);
+        document.body.classList.remove("locked");
+        this.updateHeaderProfile();
+        return;
+      } catch (e) {}
+    }
+    document.body.classList.add("locked");
+  },
+
+  handleLogin(e) {
+    if (e) e.preventDefault();
+    const userVal = document.getElementById("loginUsername").value.trim();
+    const passVal = document.getElementById("loginPassword").value.trim();
+    const roleVal = document.getElementById("loginRole").value;
+
+    const validPass = AppState.settings.adminPassword || "1234";
+
+    if (userVal.toLowerCase() === "admin" && passVal !== validPass) {
+      document.getElementById("loginErrorAlert").style.display = "block";
+      return;
+    }
+
+    document.getElementById("loginErrorAlert").style.display = "none";
+
+    AppState.currentUser = {
+      id: "usr_" + Date.now(),
+      name: userVal === "admin" ? "المدير العام" : userVal,
+      username: userVal,
+      role: roleVal
+    };
+
+    sessionStorage.setItem(AUTH_KEY, JSON.stringify(AppState.currentUser));
+    document.body.classList.remove("locked");
+    this.updateHeaderProfile();
+    AuditLogEngine.log("تسجيل دخول", `تم تسجيل الدخول بحساب ${userVal} (${roleVal}).`);
+    this.showToast(`مرحباً بك! تم تسجيل الدخول بحساب ${userVal}`, "success");
+  },
+
+  handleLogout() {
+    sessionStorage.removeItem(AUTH_KEY);
+    localStorage.removeItem(AUTH_KEY);
+    AppState.currentUser = null;
+    document.body.classList.add("locked");
+    this.showToast("تم تسجيل الخروج بنجاح.", "info");
+  },
+
+  handlePurgeAllData() {
+    if (confirm("هل أنت متأكد من التصفير الشامل والكامل لكافة البيانات والمبيعات والهواتف؟ لا يمكن التراجع عن هذا الإجراء.")) {
+      DataRepository.purgeAllData();
+      RenderEngine.init();
+      POSCartEngine.clearCart();
+      this.showToast("تم تصفير جميع البيانات بنجاح وجعل المتجر فارغاً تماماً!", "success");
+    }
+  },
+
+  handleRestoreDemoData() {
+    if (confirm("هل تريد استعادة البيانات التجريبية الأولية (الهواتف والإكسسوارات الافتراضية)؟")) {
+      DataRepository.restoreDemoData();
+      RenderEngine.init();
+      POSCartEngine.clearCart();
+      this.showToast("تمت استعادة البيانات التجريبية بنجاح!", "info");
+    }
+  },
+
+  updateHeaderProfile() {
+    if (!AppState.currentUser) return;
+    const elName = document.getElementById("headerUserName");
+    const elRole = document.getElementById("headerUserRole");
+    const elAvatar = document.getElementById("headerUserAvatar");
+
+    if (elName) elName.textContent = AppState.currentUser.name;
+    if (elRole) elRole.textContent = AppState.currentUser.role;
+    if (elAvatar) elAvatar.textContent = AppState.currentUser.username.slice(0, 3).toUpperCase();
+  },
+
+  async syncWithGitHubCloud(silent = false) {
+    const token = document.getElementById("setGithubToken")?.value || AppState.settings.githubToken;
+    const repo = document.getElementById("setGithubRepo")?.value || AppState.settings.githubRepo || "Store-phone-management";
+    const user = AppState.settings.githubUser || "hammacheikhe-byte";
+
+    if (!token) {
+      if (!silent) this.showToast("يرجى إدخال GitHub Personal Access Token من الإعدادات أولاً.", "warning");
+      return;
+    }
+
+    const statusEl = document.getElementById("githubSyncStatus");
+    if (statusEl) statusEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> جاري المزامنة السحابية مع GitHub...`;
+
+    try {
+      const contentStr = btoa(unescape(encodeURIComponent(JSON.stringify(AppState, null, 2))));
+      const apiUrl = `https://api.github.com/repos/${user}/${repo}/contents/dashboard-pos-data.json`;
+
+      let sha = "";
+      try {
+        const getRes = await fetch(apiUrl, {
+          headers: { "Authorization": `token ${token}` }
+        });
+        if (getRes.ok) {
+          const fileData = await getRes.json();
+          sha = fileData.sha;
+        }
+      } catch (e) {}
+
+      const putRes = await fetch(apiUrl, {
+        method: "PUT",
+        headers: {
+          "Authorization": `token ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          message: `Auto Sync database snapshot at ${new Date().toISOString()}`,
+          content: contentStr,
+          sha: sha || undefined
+        })
+      });
+
+      if (putRes.ok) {
+        if (statusEl) statusEl.innerHTML = `<i class="fa-solid fa-cloud-check"></i> تمت المزامنة بنجاح مع سحابة GitHub (${repo})!`;
+        if (!silent) this.showToast("تمت المزامنة السحابية وحفظ نسخة البيانات على GitHub بنجاح!", "success");
+        AuditLogEngine.log("مزامنة GitHub", `تم حفظ النسخة السحابية على مستودع ${repo}.`);
+      } else {
+        throw new Error("فشل المزامنة مع GitHub API");
+      }
+    } catch (err) {
+      if (statusEl) statusEl.innerHTML = `<i class="fa-solid fa-cloud-xmark" style="color:var(--accent-rose);"></i> تعذرت المزامنة: ${err.message}`;
+      if (!silent) this.showToast(`تعذر الاتصال بـ GitHub: ${err.message}`, "danger");
+    }
   },
 
   switchPage(pageId) {
@@ -804,10 +957,14 @@ const UIController = {
     AppState.settings.storeAddress = document.getElementById("setStoreAddress").value;
     AppState.settings.currency = document.getElementById("setCurrency").value;
     AppState.settings.theme = document.getElementById("setTheme").value;
+    AppState.settings.adminPassword = document.getElementById("setAdminPassword").value || "1234";
+    AppState.settings.githubToken = document.getElementById("setGithubToken").value.trim();
+    AppState.settings.githubRepo = document.getElementById("setGithubRepo").value.trim();
+
     DataRepository.saveState();
     RenderEngine.applyThemeAndColors();
     RenderEngine.renderDashboard();
-    this.showToast("تم حفظ الإعدادات بنجاح", "success");
+    this.showToast("تم حفظ الإعدادات ورمز GitHub Token بنجاح", "success");
   },
 
   savePhoneForm(e) {
@@ -925,7 +1082,7 @@ const UIController = {
       category: document.getElementById("expCategory").value,
       description: document.getElementById("expDesc").value,
       amount: Number(document.getElementById("expAmount").value) || 0,
-      employee: AppState.currentUser.name
+      employee: AppState.currentUser ? AppState.currentUser.name : "المدير"
     };
 
     AppState.expenses.unshift(newExp);
@@ -1088,38 +1245,6 @@ const UIController = {
     this.openModal("statementModal");
   },
 
-  viewSupplierStatement(supId) {
-    const sup = AppState.suppliers.find(s => s.id === supId);
-    if (!sup) return;
-
-    const body = document.getElementById("statementModalBody");
-    if (!body) return;
-
-    body.innerHTML = `
-      <div style="padding:16px; font-family:'Cairo', sans-serif;">
-        <h3 style="color:var(--accent-amber); font-size:18px; font-weight:800; margin-bottom:4px;">كشف حساب المورد: ${sup.name}</h3>
-        <p style="font-size:13px; color:var(--text-muted); margin-bottom:16px;">الشركة: ${sup.company} | الهاتف: ${sup.phone}</p>
-
-        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:20px; text-align:center;">
-          <div style="background:var(--bg-input); padding:12px; border-radius:8px;">
-            <div style="font-size:12px; color:var(--text-muted);">إجمالي توريدات المشتريات</div>
-            <strong style="font-size:16px; color:var(--text-main);">${CurrencyFormatter.format(sup.totalPurchases, AppState.settings.currency)}</strong>
-          </div>
-          <div style="background:var(--bg-input); padding:12px; border-radius:8px;">
-            <div style="font-size:12px; color:var(--text-muted);">المبالغ السديدة</div>
-            <strong style="font-size:16px; color:var(--accent-emerald);">${CurrencyFormatter.format(sup.totalPaid, AppState.settings.currency)}</strong>
-          </div>
-          <div style="background:var(--bg-input); padding:12px; border-radius:8px;">
-            <div style="font-size:12px; color:var(--text-muted);">المستحقات المتبقية</div>
-            <strong style="font-size:16px; color:var(--accent-rose);">${CurrencyFormatter.format(sup.totalDebt, AppState.settings.currency)}</strong>
-          </div>
-        </div>
-      </div>
-    `;
-
-    this.openModal("statementModal");
-  },
-
   handleGlobalSearch(query) {
     const dropdown = document.getElementById("searchResultsDropdown");
     if (!dropdown) return;
@@ -1205,7 +1330,7 @@ const UIController = {
         category: "مسحوبات شركاء",
         description: `سحب أرباح للشريك ${partner.name}`,
         amount: drawVal,
-        employee: AppState.currentUser.name
+        employee: AppState.currentUser ? AppState.currentUser.name : "الشريك"
       });
 
       DataRepository.saveState();
