@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>PHONE STORE MANAGEMENT PRO | نظام إدارة متجر الهواتف الذكية</title>
+
+  <!-- Google Fonts: Cairo -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Font Awesome 6 Pro Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+  <!-- App Stylesheet -->
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <div class="app-layout">
+    <!-- ==========================================================================
+         SIDEBAR NAVIGATION
+         ========================================================================== -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <a href="#" class="brand" onclick="UIController.switchPage('dashboard')">
+          <div class="brand-icon"><i class="fa-solid fa-mobile-screen-button"></i></div>
+          <div class="brand-text">
+            <div class="brand-title">PHONE STORE PRO</div>
+            <div class="brand-subtitle">نظام ERP/POS التجاري</div>
+          </div>
+        </a>
+        <button class="sidebar-toggle-btn" onclick="UIController.toggleSidebar()" title="طي القائمة">
+          <i class="fa-solid fa-bars-staggered"></i>
+        </button>
+      </div>
+
+      <nav class="sidebar-menu">
+        <a href="#" class="menu-item active" data-page="dashboard" onclick="UIController.switchPage('dashboard')">
+          <div class="menu-item-content"><i class="fa-solid fa-chart-pie"></i> <span class="menu-item-text">لوحة التحكم</span></div>
+        </a>
+
+        <div class="menu-group-title">المبيعات والنقاط</div>
+        <a href="#" class="menu-item" data-page="pos" onclick="UIController.switchPage('pos')">
+          <div class="menu-item-content"><i class="fa-solid fa-cash-register"></i> <span class="menu-item-text">نقطة البيع POS</span></div>
+          <span class="menu-badge">سريع</span>
+        </a>
+        <a href="#" class="menu-item" data-page="sales" onclick="UIController.switchPage('sales')">
+          <div class="menu-item-content"><i class="fa-solid fa-receipt"></i> <span class="menu-item-text">جميع المبيعات</span></div>
+        </a>
+        <a href="#" class="menu-item" data-page="returns" onclick="UIController.switchPage('returns')">
+          <div class="menu-item-content"><i class="fa-solid fa-rotate-left"></i> <span class="menu-item-text">المرتجعات</span></div>
+        </a>
+
+        <div class="menu-group-title">المخزون والمنتجات</div>
+        <a href="#" class="menu-item" data-page="phones" onclick="UIController.switchPage('phones')">
+          <div class="menu-item-content"><i class="fa-solid fa-mobile-retro"></i> <span class="menu-item-text">إدارة الهواتف (IMEI)</span></div>
+        </a>
+        <a href="#" class="menu-item" data-page="accessories" onclick="UIController.switchPage('accessories')">
+          <div class="menu-item-content"><i class="fa-solid fa-headphones"></i> <span class="menu-item-text">الإكسسوارات</span></div>
+        </a>
+
+        <div class="menu-group-title">الأشخاص والشركاء</div>
+        <a href="#" class="menu-item" data-page="customers" onclick="UIController.switchPage('customers')">
+          <div class="menu-item-content"><i class="fa-solid fa-users"></i> <span class="menu-item-text">العملاء والديون</span></div>
+        </a>
+        <a href="#" class="menu-item" data-page="suppliers" onclick="UIController.switchPage('suppliers')">
+          <div class="menu-item-content"><i class="fa-solid fa-truck-field"></i> <span class="menu-item-text">الموردون والمشتريات</span></div>
+        </a>
+        <a href="#" class="menu-item" data-page="partners" onclick="UIController.switchPage('partners')">
+          <div class="menu-item-content"><i class="fa-solid fa-handshake"></i> <span class="menu-item-text">الشركاء والأرباح</span></div>
+          <span class="menu-badge" style="background:var(--accent-purple);">مستقل</span>
+        </a>
+
+        <div class="menu-group-title">المالية والتقارير</div>
+        <a href="#" class="menu-item" data-page="expenses" onclick="UIController.switchPage('expenses')">
+          <div class="menu-item-content"><i class="fa-solid fa-wallet"></i> <span class="menu-item-text">المصروفات والصندوق</span></div>
+        </a>
+        <a href="#" class="menu-item" data-page="reports" onclick="UIController.switchPage('reports')">
+          <div class="menu-item-content"><i class="fa-solid fa-chart-line"></i> <span class="menu-item-text">التقارير الشاملة (13)</span></div>
+        </a>
+        <a href="#" class="menu-item" data-page="audit" onclick="UIController.switchPage('audit')">
+          <div class="menu-item-content"><i class="fa-solid fa-clock-rotate-left"></i> <span class="menu-item-text">سجل النشاط التدقيقي</span></div>
+        </a>
+
+        <div class="menu-group-title">الإعدادات</div>
+        <a href="#" class="menu-item" data-page="settings" onclick="UIController.switchPage('settings')">
+          <div class="menu-item-content"><i class="fa-solid fa-sliders"></i> <span class="menu-item-text">إعدادات النظام</span></div>
+        </a>
+      </nav>
+    </aside>
+
+    <!-- ==========================================================================
+         MAIN CONTENT WRAPPER
+         ========================================================================== -->
+    <main class="main-wrapper">
+      <!-- Header Navbar -->
+      <header class="navbar">
+        <div class="navbar-left">
+          <button class="nav-icon-btn" onclick="UIController.toggleSidebar()" title="القائمة الرئيسية">
+            <i class="fa-solid fa-bars"></i>
+          </button>
+
+          <div class="global-search">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="globalSearchInput" placeholder="بحث شامل: IMEI / باركود / هاتف / عميل / فاتورة..." oninput="UIController.handleGlobalSearch(this.value)" />
+            <div id="searchResultsDropdown" class="search-results-dropdown"></div>
+          </div>
+        </div>
+
+        <div class="navbar-right">
+          <button class="btn-quick-pos" onclick="UIController.switchPage('pos')">
+            <i class="fa-solid fa-bolt"></i>
+            <span>البيع السريع POS</span>
+          </button>
+
+          <button class="nav-icon-btn" onclick="UIController.toggleTheme()" title="تغيير المظهر (داكن/فاتح)">
+            <i class="fa-solid fa-circle-half-stroke"></i>
+          </button>
+
+          <div class="user-profile">
+            <div class="user-avatar">ADM</div>
+            <div class="user-info">
+              <span class="user-name">المدير العام</span>
+              <span class="user-role">Super Admin</span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Main Body Container -->
+      <div class="content-body">
+        
+        <!-- 1. DASHBOARD PAGE VIEW -->
+        <section id="dashboardPage" class="page-view active">
+          <div class="section-header">
+            <div class="section-title">
+              <h2><i class="fa-solid fa-chart-pie" style="color:var(--primary);"></i> لوحة التحكم والإحصائيات الحية</h2>
+              <p>نظرة عامة ومباشرة على أداء المبيعات، المخزون، صافي الأرباح، والتنبيهات</p>
+            </div>
+            <div class="section-actions">
+              <button class="btn btn-primary" onclick="UIController.openModal('phoneModal')"><i class="fa-solid fa-plus"></i> إضافة هاتف جديد</button>
+            </div>
+          </div>
+
+          <!-- KPI Cards Grid -->
+          <div class="kpi-grid">
+            <div class="kpi-card">
+              <div class="kpi-header">
+                <span class="kpi-title">مبيعات اليوم</span>
+                <div class="kpi-icon primary"><i class="fa-solid fa-calendar-day"></i></div>
+              </div>
+              <div class="kpi-body">
+                <div class="kpi-value" id="kpiTodaySales">0 MRU</div>
+              </div>
+              <div class="kpi-footer">
+                <span class="trend-badge up"><i class="fa-solid fa-arrow-trend-up"></i> +12%</span>
+                <span style="color:var(--text-muted);">مقارنة بأمس</span>
+              </div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-header">
+                <span class="kpi-title">مبيعات الشهر</span>
+                <div class="kpi-icon success"><i class="fa-solid fa-chart-simple"></i></div>
+              </div>
+              <div class="kpi-body">
+                <div class="kpi-value" id="kpiMonthSales">0 MRU</div>
+              </div>
+              <div class="kpi-footer">
+                <span class="trend-badge up"><i class="fa-solid fa-arrow-trend-up"></i> +8.5%</span>
+                <span style="color:var(--text-muted);">مقارنة بالشهر الماضي</span>
+              </div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-header">
+                <span class="kpi-title">صافي الأرباح</span>
+                <div class="kpi-icon purple"><i class="fa-solid fa-sack-dollar"></i></div>
+              </div>
+              <div class="kpi-body">
+                <div class="kpi-value" id="kpiNetProfit">0 MRU</div>
+              </div>
+              <div class="kpi-footer">
+                <span style="color:var(--accent-emerald); font-weight:700;">محسوب دقيقاً بعد المصاريف</span>
+              </div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-header">
+                <span class="kpi-title">قيمة المخزون الإجمالية</span>
+                <div class="kpi-icon amber"><i class="fa-solid fa-boxes-stacked"></i></div>
+              </div>
+              <div class="kpi-body">
+                <div class="kpi-value" id="kpiInventoryValue">0 MRU</div>
+              </div>
+              <div class="kpi-footer">
+                <span id="kpiPhoneCount" style="color:var(--text-main); font-weight:700;">0 هاتف متوفر</span>
+              </div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-header">
+                <span class="kpi-title">ديون العملاء</span>
+                <div class="kpi-icon rose"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+              </div>
+              <div class="kpi-body">
+                <div class="kpi-value" id="kpiCustomerDebts">0 MRU</div>
+              </div>
+              <div class="kpi-footer">
+                <span style="color:var(--accent-rose); font-weight:700;">مستحقات واجبة التحصيل</span>
+              </div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-header">
+                <span class="kpi-title">مستحقات الموردين</span>
+                <div class="kpi-icon amber"><i class="fa-solid fa-truck-ramp-box"></i></div>
+              </div>
+              <div class="kpi-body">
+                <div class="kpi-value" id="kpiSupplierPayables">0 MRU</div>
+              </div>
+              <div class="kpi-footer">
+                <span style="color:var(--accent-amber); font-weight:700;">ديون الشركات والموردين</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Charts and Recent Activity Grid -->
+          <div class="charts-grid">
+            <div class="chart-card">
+              <div class="chart-header">
+                <h3 class="chart-title"><i class="fa-solid fa-arrow-trend-up" style="color:var(--primary);"></i> أداء المبيعات والأرباح الأسبوعية</h3>
+              </div>
+              <div class="chart-container" style="display:flex; align-items:center; justify-content:center; background:var(--bg-input); border-radius:var(--radius-md); border:1px solid var(--border-color);">
+                <div style="text-align:center; padding:40px; color:var(--text-muted);">
+                  <i class="fa-solid fa-chart-area" style="font-size:48px; color:var(--primary); margin-bottom:12px;"></i>
+                  <p style="font-weight:700;">رسم بياني تفاعلي حي لأداء المبيعات اليومية والأرباح</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="chart-card">
+              <div class="chart-header">
+                <h3 class="chart-title"><i class="fa-solid fa-triangle-exclamation" style="color:var(--accent-amber);"></i> تنبيهات النظام والمخزون</h3>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:10px;">
+                <div style="background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.3); padding:12px; border-radius:var(--radius-md); font-size:13px;">
+                  <strong style="color:var(--accent-amber);"><i class="fa-solid fa-box"></i> هاتف منخفض المخزون:</strong>
+                  <div>iPhone 14 Pro المتبقي 2 أجهزة فقط.</div>
+                </div>
+                <div style="background:rgba(244,63,94,0.1); border:1px solid rgba(244,63,94,0.3); padding:12px; border-radius:var(--radius-md); font-size:13px;">
+                  <strong style="color:var(--accent-rose);"><i class="fa-solid fa-clock"></i> دين مستحق للتحصيل:</strong>
+                  <div>العميل محمد ولد أحمد لديه متبقي 25,000 أوقية.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dashboard Recent Operations -->
+          <div class="card-box">
+            <div class="card-header-clean">
+              <h3 style="font-size:16px; font-weight:800;"><i class="fa-solid fa-clock-rotate-left" style="color:var(--accent-emerald);"></i> آخر عمليات المبيعات الصادرة</h3>
+              <button class="btn btn-secondary btn-sm" onclick="UIController.switchPage('sales')">عرض كافة الفواتير</button>
+            </div>
+            <div class="table-responsive">
+              <table class="custom-table">
+                <thead>
+                  <tr>
+                    <th>رقم الفاتورة</th>
+                    <th>العميل</th>
+                    <th>العدد</th>
+                    <th>الإجمالي</th>
+                    <th>الحالة</th>
+                    <th>خيارات</th>
+                  </tr>
+                </thead>
+                <tbody id="dashboardRecentSales"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. POS SCREEN PAGE VIEW -->
+        <section id="posPage" class="page-view">
+          <div class="section-header" style="margin-bottom:16px;">
+            <div class="section-title">
+              <h2><i class="fa-solid fa-cash-register" style="color:var(--accent-emerald);"></i> نقطة البيع الكاشير السريعة (POS)</h2>
+              <p>مسح الباركود، اختيار الهاتف بالـ IMEI، وحساب الديون والخصومات فورياً</p>
+            </div>
+          </div>
+
+          <div class="pos-container">
+            <!-- Products Catalog -->
+            <div class="pos-catalog">
+              <div class="pos-search-bar">
+                <input type="text" id="posSearchInput" class="form-control" placeholder="ابحث باسم الهاتف، الموديل، الـ IMEI، أو الباركود..." oninput="RenderEngine.renderPOSProducts()" />
+                <select id="posBrandFilter" class="form-control" style="width:160px;" onchange="RenderEngine.renderPOSProducts()">
+                  <option value="">جميع الماركات</option>
+                  <option value="Apple">Apple</option>
+                  <option value="Samsung">Samsung</option>
+                  <option value="Xiaomi">Xiaomi</option>
+                </select>
+              </div>
+
+              <div id="posProductsGrid" class="pos-products-grid"></div>
+            </div>
+
+            <!-- POS Cart Panel -->
+            <div class="pos-cart">
+              <div class="cart-header">
+                <h3 style="font-size:15px; font-weight:800;"><i class="fa-solid fa-cart-shopping"></i> سلة المشتريات الحالية</h3>
+                <button class="btn btn-danger btn-icon" title="تفريغ السلة" onclick="POSCartEngine.clearCart()"><i class="fa-solid fa-trash-can"></i></button>
+              </div>
+
+              <div id="posCartItemsList" class="cart-items-list"></div>
+
+              <div class="cart-footer">
+                <div class="form-group" style="margin-bottom:8px;">
+                  <label class="form-label">اختيار العميل المسجل:</label>
+                  <select id="posCustomerSelect" class="form-control">
+                    <option value="">عميل نقدي مباشر</option>
+                    <option value="cust_1">محمد ولد أحمد (مدين)</option>
+                    <option value="cust_2">سيدي محمود</option>
+                    <option value="cust_3">مريم بنت فال</option>
+                  </select>
+                </div>
+
+                <div class="cart-row"><span>المجموع الفرعي:</span> <strong id="cartSubtotal">0 MRU</strong></div>
+                <div class="cart-row" style="align-items:center;">
+                  <span>الخصم المباشر:</span>
+                  <input type="number" id="posDiscountInput" class="form-control" style="width:100px; height:32px;" value="0" onchange="POSCartEngine.discount = Number(this.value); POSCartEngine.recalculate();" />
+                </div>
+                <div class="cart-total-row cart-row"><span>الإجمالي النهائي:</span> <span id="cartTotal" style="color:var(--accent-emerald);">0 MRU</span></div>
+
+                <div class="form-group" style="margin-bottom:8px;">
+                  <label class="form-label">المبلغ المدفوع فعلياً (للدفع الجزئي/الديون):</label>
+                  <input type="number" id="posPaidInput" class="form-control" placeholder="أدخل المبلغ المدفوع" />
+                </div>
+
+                <div class="form-group" style="margin-bottom:8px;">
+                  <label class="form-label">طريقة الدفع:</label>
+                  <select id="posPaymentMethod" class="form-control">
+                    <option value="cash">نقدي (Cash)</option>
+                    <option value="card">بطاقة مصرفية</option>
+                    <option value="bank">تحويل بنكي (Bankily / Masrvi)</option>
+                    <option value="mixed">دفع مختلط / بالدين</option>
+                  </select>
+                </div>
+
+                <button class="btn btn-success" style="width:100%; height:46px; font-size:16px; justify-content:center;" onclick="UIController.handlePOSCheckout()">
+                  <i class="fa-solid fa-check-circle"></i> تأكيد البيع وإصدار الفاتورة
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3. PHONES MANAGEMENT PAGE VIEW -->
+        <section id="phonesPage" class="page-view">
+          <div class="section-header">
+            <div class="section-title">
+              <h2><i class="fa-solid fa-mobile-retro" style="color:var(--primary);"></i> إدارة الهواتف والـ IMEI الفريد</h2>
+              <p>سجل الأجهزة والتتبع الدقيق برقم الـ IMEI 1 و IMEI 2 وحالة كل جهاز</p>
+            </div>
+            <div class="section-actions">
+              <button class="btn btn-primary" onclick="UIController.openModal('phoneModal')"><i class="fa-solid fa-plus"></i> إضافة هاتف جديد</button>
+            </div>
+          </div>
+
+          <div class="card-box">
+            <div class="table-responsive">
+              <table class="custom-table">
+                <thead>
+                  <tr>
+                    <th>الكود</th>
+                    <th>الهاتف والماركة</th>
+                    <th>أرقام IMEI</th>
+                    <th>الحالة</th>
+                    <th>سعر الشراء</th>
+                    <th>سعر البيع</th>
+                    <th>المخزون</th>
+                    <th>حالة الجهاز</th>
+                    <th>إجراءات</th>
+                  </tr>
+                </thead>
+                <tbody id="phonesTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 4. ACCESSORIES PAGE VIEW -->
+        <section id="accessoriesPage" class="page-view">
+          <div class="section-header">
+            <div class="section-title">
+              <h2><i class="fa-solid fa-headphones" style="color:var(--accent-purple);"></i> إدارة الإكسسوارات والشواحن</h2>
+              <p>إدارة مخزون الشواحن، السماعات، الكابلات، الحافظات، وPower Banks</p>
+            </div>
+            <div class="section-actions">
+              <button class="btn btn-primary" onclick="UIController.openModal('accessoryModal')"><i class="fa-solid fa-plus"></i> إضافة إكسسوار جديد</button>
+            </div>
+          </div>
+
+          <div class="card-box">
+            <div class="table-responsive">
+              <table class="custom-table">
+                <thead>
+                  <tr>
+                    <th>SKU</th>
+                    <th>الاسم</th>
+                    <th>التصنيف</th>
+                    <th>العلامة التجارية</th>
+                    <th>سعر الشراء</th>
+                    <th>سعر البيع</th>
+                    <th>المخزون</th>
+                    <th>إجراءات</th>
+                  </tr>
+                </thead>
+                <tbody id="accessoriesTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 5. SALES PAGE VIEW -->
+        <section id="salesPage" class="page-view">
+          <div class="section-header">
+            <div class="section-title">
+              <h2><i class="fa-solid fa-receipt" style="color:var(--primary);"></i> سجل جميع الفواتير والمبيعات</h2>
+              <p>استعراض الفواتير الصادرة وطباعتها وتصنيف المبيعات حسب العميل</p>
+            </div>
+          </div>
+
+          <div class="card-box">
+            <div class="table-responsive">
+              <table class="custom-table">
+                <thead>
+                  <tr>
+                    <th>رقم الفاتورة</th>
+                    <th>التاريخ والوقت</th>
+                    <th>العميل</th>
+                    <th>المنتجات</th>
+                    <th>الإجمالي</th>
+                    <th>المدفوع</th>
+                    <th>المتبقي (دين)</th>
+                    <th>إجراءات</th>
+                  </tr>
+                </thead>
+                <tbody id="salesTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 6. RETURNS PAGE VIEW -->
+        <section id="returnsPage" class="page-view">
+          <div class="section-header">
+            <div class="section-title">
+              <h2><i class="fa-solid fa-rotate-left" style="color:var(--accent-amber);"></i> مرتجعات المبيعات والمشتريات</h2>
+              <p>تسجيل المرتجعات برقم الفاتورة وتحديث المخزون والمالية آلياً</p>
+            </div>
+          </div>
+
+          <div class="card-box">
+            <div class="table-responsive">
+              <table class="custom-table">
+                <thead>
+                  <tr>
+                    <th>رقم المرتجع</th>
+                    <th>التاريخ</th>
+                    <th>رقم الفاتورة الأصلية</th>
+                    <th>المنتج / IMEI</th>
+                    <th>المبلغ المسترد</th>
+                    <th>سبب الإرجاع</th>
+                  </tr>
+                </thead>
+                <tbody id="returnsTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 7. CUSTOMERS PAGE VIEW -->
+        <section id="customersPage" class="page-view">
+          <div class="section-header">
+            <div class="section-title">
+              <h2><i class="fa-solid fa-users" style="color:var(--accent-cyan);"></i> سجل العملاء والديون المستحقة</h2>
+              <p>تتبع مشتريات العملاء، الديون القائمة، وكشوف الحسابات التفصيلية</p>
+            </div>
+            <div class="section-actions">
+              <button class="btn btn-primary" onclick="UIController.openModal('customerModal')"><i class="fa-solid fa-user-plus"></i> إضافة عميل جديد</button>
+            </div>
+          </div>
+
+          <div class="card-box">
+            <div class="table-responsive">
+              <table class="custom-table">
+                <thead>
+                  <tr>
+                    <th>الاسم</th>
+                    <th>الهاتف</th>
+                    <th>العنوان</th>
+                    <th>إجمالي المشتريات</th>
+                    <th>إجمالي المدفوع</th>
+                    <th>الديون المستحقة</th>
+                    <th>كشف الحساب</th>
+                  </tr>
+                </thead>
+                <tbody id="customersTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 8. SUPPLIERS PAGE VIEW -->
+        <section id="suppliersPage" class="page-view">
+          <div class="section-header">
+            <div class="section-title">
+              <h2><i class="fa-solid fa-truck-field" style="color:var(--accent-amber);"></i> الموردون وفواتير الشراء</h2>
+              <p>إدارة شركات الاستيراد والموردين ومستحقات الشراء</p>
+            </div>
+            <div class="section-actions">
+              <button class="btn btn-primary" onclick="UIController.openModal('supplierModal')"><i class="fa-solid fa-plus"></i> إضافة مورد جديد</button>
+            </div>
+          </div>
+
+          <div class="card-box">
+            <div class="table-responsive">
+              <table class="custom-table">
+                <thead>
+                  <tr>
+                    <th>المورد والشركة</th>
+                    <th>الهاتف</th>
+                    <th>البريد الإلكتروني</th>
+                    <th>إجمالي المشتريات</th>
+                    <th>المدفوع</th>
+                    <th>المتبقي (مستحقات)</th>
+                    <th>خيارات</th>
+                  </tr>
+                </thead>
+                <tbody id="suppliersTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 9. PARTNERS & PROFIT SHARING PAGE VIEW -->
+        <section id="partnersPage" class="page-view">
+          <div class="section-header">
+            <div class="section-title">
+              <h2><i class="fa-solid fa-handshake" style="color:var(--accent-purple);"></i> نظام الشركاء وتوزيع الأرباح الإفرادية</h2>
+              <p>احتساب دقيق لحصة كل شريك من صافي الأرباح وتتبع المسحوبات ورأس المال</p>
+            </div>
+          </div>
+
+          <div class="card-box">
+            <div class="table-responsive">
+              <table class="custom-table">
+                <thead>
+                  <tr>
+                    <th>اسم الشريك</th>
+                    <th>نسبة الشراكة %</th>
+                    <th>رأس المال المساهم</th>
+                    <th>الأرباح المستحقة التراكمية</th>
+                    <th>الأرباح المسحوبة/المدفوعة</th>
+                    <th>الرصيد المتبقي للشريك</th>
+                    <th>سحب أرباح</th>
+                  </tr>
+                </thead>
+                <tbody id="partnersTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 10. EXPENSES PAGE VIEW -->
+        <section id="expensesPage" class="page-view">
+          <div class="section-header">
+            <div class="section-title">
+              <h2><i class="fa-solid fa-wallet" style="color:var(--accent-rose);"></i> إدارة المصروفات والصندوق اليومي</h2>
+              <p>تسجيل الإيجارات، الفواتير، الرواتب، التسويق، والصيانة</p>
+            </div>
+            <div class="section-actions">
+              <button class="btn btn-primary" onclick="UIController.openModal('expenseModal')"><i class="fa-solid fa-plus"></i> تسجيل مصروف جديد</button>
+            </div>
+          </div>
+
+          <div class="card-box">
+            <div class="table-responsive">
+              <table class="custom-table">
+                <thead>
+                  <tr>
+                    <th>التاريخ</th>
+                    <th>التصنيف</th>
+                    <th>البيان والوصف</th>
+                    <th>المبلغ</th>
+                    <th>الموظف</th>
+                  </tr>
+                </thead>
+                <tbody id="expensesTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 11. REPORTS PAGE VIEW -->
+        <section id="reportsPage" class="page-view">
+          <div class="section-header">
+            <div class="section-title">
+              <h2><i class="fa-solid fa-chart-line" style="color:var(--primary);"></i> محرك التقارير المالية والإدارية الشاملة (13 تقريراً)</h2>
+              <p>تقارير المبيعات، الأرباح، المخزون، IMEI، الديون، الشركاء، والمصروفات</p>
+            </div>
+          </div>
+
+          <div class="card-box">
+            <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:20px;">
+              <button class="btn btn-primary btn-sm" onclick="UIController.exportReportCSV('sales')"><i class="fa-solid fa-file-excel"></i> تصدير تقرير المبيعات (CSV/Excel)</button>
+              <button class="btn btn-secondary btn-sm" onclick="window.print()"><i class="fa-solid fa-print"></i> طباعة التقرير الشامل</button>
+            </div>
+            
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; margin-top:16px;">
+              <div style="background:var(--bg-input); padding:16px; border-radius:var(--radius-md); border:1px solid var(--border-color); cursor:pointer;" onclick="UIController.showToast('تقرير المبيعات جاهز ومحدث', 'success')">
+                <h4 style="font-size:14px; font-weight:700;"><i class="fa-solid fa-receipt" style="color:var(--primary);"></i> تقرير المبيعات</h4>
+                <p style="font-size:12px; color:var(--text-muted); margin-top:4px;">تأريخ وفواتير وحالات البيع</p>
+              </div>
+              <div style="background:var(--bg-input); padding:16px; border-radius:var(--radius-md); border:1px solid var(--border-color); cursor:pointer;" onclick="UIController.showToast('تقرير الأرباح والصافي جاهز', 'success')">
+                <h4 style="font-size:14px; font-weight:700;"><i class="fa-solid fa-sack-dollar" style="color:var(--accent-emerald);"></i> تقرير الأرباح الصافية</h4>
+                <p style="font-size:12px; color:var(--text-muted); margin-top:4px;">حساب COGS والمصاريف</p>
+              </div>
+              <div style="background:var(--bg-input); padding:16px; border-radius:var(--radius-md); border:1px solid var(--border-color); cursor:pointer;" onclick="UIController.showToast('تقرير حصر أرقام IMEI جاهز', 'success')">
+                <h4 style="font-size:14px; font-weight:700;"><i class="fa-solid fa-barcode" style="color:var(--accent-cyan);"></i> تقرير الـ IMEI</h4>
+                <p style="font-size:12px; color:var(--text-muted); margin-top:4px;">تتبع جميع أرقام IMEI</p>
+              </div>
+              <div style="background:var(--bg-input); padding:16px; border-radius:var(--radius-md); border:1px solid var(--border-color); cursor:pointer;" onclick="UIController.showToast('تقرير ديون العملاء والمستحقات جاهز', 'success')">
+                <h4 style="font-size:14px; font-weight:700;"><i class="fa-solid fa-hand-holding-dollar" style="color:var(--accent-rose);"></i> تقرير الديون والمستحقات</h4>
+                <p style="font-size:12px; color:var(--text-muted); margin-top:4px;">كشوف المديونيات الحالية</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 12. AUDIT LOG PAGE VIEW -->
+        <section id="auditPage" class="page-view">
+          <div class="section-header">
+            <div class="section-title">
+              <h2><i class="fa-solid fa-clock-rotate-left" style="color:var(--accent-amber);"></i> سجل النشاط التدقيقي (Audit Log)</h2>
+              <p>تتبع عمليات المستخدمين بالنظام بالتاريخ والوقت والتفاصيل</p>
+            </div>
+          </div>
+
+          <div class="card-box">
+            <div class="table-responsive">
+              <table class="custom-table">
+                <thead>
+                  <tr>
+                    <th>التاريخ والوقت</th>
+                    <th>المستخدم</th>
+                    <th>نوع العملية</th>
+                    <th>التفاصيل والبيان</th>
+                  </tr>
+                </thead>
+                <tbody id="auditLogsTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 13. SETTINGS PAGE VIEW -->
+        <section id="settingsPage" class="page-view">
+          <div class="section-header">
+            <div class="section-title">
+              <h2><i class="fa-solid fa-sliders" style="color:var(--primary);"></i> إعدادات المتجر والنسخ الاحتياطي</h2>
+              <p>تخصيص الهوية البصرية، العملة، بيانت المتجر، وتصدير واستعادة البيانات</p>
+            </div>
+          </div>
+
+          <div class="card-box" style="max-width:700px;">
+            <form onsubmit="UIController.saveSettingsFromForm(event)">
+              <div class="form-group">
+                <label class="form-label">اسم المتجر / التجاري:</label>
+                <input type="text" id="setStoreName" class="form-control" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">هاتف التواصل:</label>
+                <input type="text" id="setStorePhone" class="form-control" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">عنوان المتجر الرئيسي:</label>
+                <input type="text" id="setStoreAddress" class="form-control" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">العملة الافتراضية للنظام:</label>
+                <select id="setCurrency" class="form-control">
+                  <option value="MRU">MRU - أوقية مورتانية</option>
+                  <option value="USD">USD - دولار أمريكي ($)</option>
+                  <option value="EUR">EUR - يورو (€)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">المظهر (Theme):</label>
+                <select id="setTheme" class="form-control">
+                  <option value="dark">الوضع الداكن الاحترافي (Dark Navy)</option>
+                  <option value="light">الوضع الفاتح المريح (Light Slate)</option>
+                </select>
+              </div>
+
+              <div style="display:flex; gap:12px; margin-top:24px; flex-wrap:wrap;">
+                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> حفظ الإعدادات</button>
+                <button type="button" class="btn btn-secondary" onclick="DataRepository.exportBackup()"><i class="fa-solid fa-download"></i> تصدير نسخة احتياطية (JSON)</button>
+                <button type="button" class="btn btn-danger" onclick="if(confirm('هل أنت متأكد من تصفير وإعادة تعيين البيانات للبيانات التجريبية؟')){ DataRepository.purgeAllData(); location.reload(); }"><i class="fa-solid fa-rotate"></i> تصفير البيانات</button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- ==========================================================================
+       MODALS SECTION
+       ========================================================================== -->
+
+  <!-- Add/Edit Phone Modal -->
+  <div id="phoneModal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 style="font-size:16px; font-weight:800;"><i class="fa-solid fa-mobile-retro"></i> إضافة / تعديل هاتف بالـ IMEI</h3>
+        <button class="btn btn-secondary btn-icon" onclick="UIController.closeModal('phoneModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="UIController.savePhoneForm(event)">
+        <div class="modal-body">
+          <input type="hidden" id="editingPhoneId" value="" />
+          <div class="form-group">
+            <label class="form-label">اسم الهاتف الكلي:</label>
+            <input type="text" id="phoneName" class="form-control" placeholder="مثال: iPhone 15 Pro Max 256GB" required />
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <div class="form-group">
+              <label class="form-label">العلامة التجارية (Brand):</label>
+              <select id="phoneBrand" class="form-control">
+                <option value="Apple">Apple</option>
+                <option value="Samsung">Samsung</option>
+                <option value="Xiaomi">Xiaomi</option>
+                <option value="Oppo">Oppo</option>
+                <option value="Infinix">Infinix</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">الموديل (Model):</label>
+              <input type="text" id="phoneModel" class="form-control" placeholder="15 Pro Max" />
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <div class="form-group">
+              <label class="form-label">رقم IMEI 1 الفريد:</label>
+              <input type="text" id="phoneImei1" class="form-control" placeholder="359871092837461" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">رقم IMEI 2 (اختياري):</label>
+              <input type="text" id="phoneImei2" class="form-control" placeholder="359871092837462" />
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <div class="form-group">
+              <label class="form-label">الرقم التسلسلي Serial No:</label>
+              <input type="text" id="phoneSerial" class="form-control" placeholder="DX9G82736152" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">حالة الجهاز:</label>
+              <select id="phoneCondition" class="form-control">
+                <option value="New">جديد بالعلبة (New)</option>
+                <option value="Used">مستعمل (Used)</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
+            <div class="form-group">
+              <label class="form-label">سعر الشراء:</label>
+              <input type="number" id="phoneCost" class="form-control" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">سعر البيع:</label>
+              <input type="number" id="phonePrice" class="form-control" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">صحة البطارية %:</label>
+              <input type="number" id="phoneBattery" class="form-control" value="100" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">الكمية بالمخزن:</label>
+            <input type="number" id="phoneStock" class="form-control" value="1" required />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="UIController.closeModal('phoneModal')">إلغاء</button>
+          <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check"></i> حفظ بيانات الهاتف</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add Accessory Modal -->
+  <div id="accessoryModal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 style="font-size:16px; font-weight:800;"><i class="fa-solid fa-headphones"></i> إضافة إكسسوار جديد</h3>
+        <button class="btn btn-secondary btn-icon" onclick="UIController.closeModal('accessoryModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="UIController.saveAccessoryForm(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">اسم الإكسسوار:</label>
+            <input type="text" id="accName" class="form-control" placeholder="مثال: شاحن أنكر 20W" required />
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <div class="form-group">
+              <label class="form-label">رمز SKU:</label>
+              <input type="text" id="accSku" class="form-control" placeholder="ANK-20W" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">التصنيف:</label>
+              <select id="accCategory" class="form-control">
+                <option value="شواحن وكابلات">شواحن وكابلات</option>
+                <option value="سماعات">سماعات</option>
+                <option value="حافظات وواقيات">حافظات وواقيات</option>
+                <option value="Power Banks">Power Banks</option>
+                <option value="ساعات ذكية">ساعات ذكية</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
+            <div class="form-group">
+              <label class="form-label">سعر الشراء:</label>
+              <input type="number" id="accCost" class="form-control" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">سعر البيع:</label>
+              <input type="number" id="accPrice" class="form-control" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">الكمية:</label>
+              <input type="number" id="accStock" class="form-control" value="10" required />
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="UIController.closeModal('accessoryModal')">إلغاء</button>
+          <button type="submit" class="btn btn-primary">حفظ الإكسسوار</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add Customer Modal -->
+  <div id="customerModal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 style="font-size:16px; font-weight:800;"><i class="fa-solid fa-user-plus"></i> إضافة عميل جديد</h3>
+        <button class="btn btn-secondary btn-icon" onclick="UIController.closeModal('customerModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="UIController.saveCustomerForm(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">اسم العميل:</label>
+            <input type="text" id="custName" class="form-control" placeholder="الاسم الكامل" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">رقم الهاتف:</label>
+            <input type="text" id="custPhone" class="form-control" placeholder="36 00 00 00" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">العنوان:</label>
+            <input type="text" id="custAddress" class="form-control" placeholder="المدينة / الحي" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="UIController.closeModal('customerModal')">إلغاء</button>
+          <button type="submit" class="btn btn-primary">حفظ العميل</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add Supplier Modal -->
+  <div id="supplierModal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 style="font-size:16px; font-weight:800;"><i class="fa-solid fa-truck-field"></i> إضافة مورد جديد</h3>
+        <button class="btn btn-secondary btn-icon" onclick="UIController.closeModal('supplierModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="UIController.saveSupplierForm(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">اسم المورد / المسؤول:</label>
+            <input type="text" id="supName" class="form-control" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">اسم الشركة الموردة:</label>
+            <input type="text" id="supCompany" class="form-control" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">رقم الهاتف:</label>
+            <input type="text" id="supPhone" class="form-control" required />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="UIController.closeModal('supplierModal')">إلغاء</button>
+          <button type="submit" class="btn btn-primary">حفظ المورد</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add Expense Modal -->
+  <div id="expenseModal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 style="font-size:16px; font-weight:800;"><i class="fa-solid fa-wallet"></i> تسجيل مصروف جديد</h3>
+        <button class="btn btn-secondary btn-icon" onclick="UIController.closeModal('expenseModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="UIController.saveExpenseForm(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">التاريخ:</label>
+            <input type="date" id="expDate" class="form-control" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">التصنيف:</label>
+            <select id="expCategory" class="form-control">
+              <option value="إيجار">إيجار المتجر</option>
+              <option value="كهرباء">كهرباء وماء</option>
+              <option value="رواتب">رواتب وأجور</option>
+              <option value="تسويق">تسويق وإعلانات</option>
+              <option value="صيانة">صيانة وأدوات</option>
+              <option value="مصروفات أخرى">مصروفات أخرى</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">البيان والوصف التفصيلي:</label>
+            <input type="text" id="expDesc" class="form-control" placeholder="وصف المصروف" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">المبلغ:</label>
+            <input type="number" id="expAmount" class="form-control" placeholder="المبلغ بأوقية" required />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="UIController.closeModal('expenseModal')">إلغاء</button>
+          <button type="submit" class="btn btn-primary">حفظ المصروف</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Printable Invoice View Modal -->
+  <div id="invoiceModal" class="modal-overlay">
+    <div class="modal-content" style="max-width:700px;">
+      <div class="modal-header">
+        <h3 style="font-size:16px; font-weight:800;"><i class="fa-solid fa-receipt"></i> معاينة وطباعة الفاتورة الرسمية</h3>
+        <button class="btn btn-secondary btn-icon" onclick="UIController.closeModal('invoiceModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body" id="invoiceModalBody"></div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="UIController.printCurrentInvoice()"><i class="fa-solid fa-print"></i> طباعة الفاتورة الآن</button>
+        <button class="btn btn-secondary" onclick="UIController.closeModal('invoiceModal')">إغلاق</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Statement Ledger View Modal -->
+  <div id="statementModal" class="modal-overlay">
+    <div class="modal-content" style="max-width:700px;">
+      <div class="modal-header">
+        <h3 style="font-size:16px; font-weight:800;"><i class="fa-solid fa-file-invoice-dollar"></i> كشف حساب تفصيلي</h3>
+        <button class="btn btn-secondary btn-icon" onclick="UIController.closeModal('statementModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body" id="statementModalBody"></div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="window.print()"><i class="fa-solid fa-print"></i> طباعة كشف الحساب</button>
+        <button class="btn btn-secondary" onclick="UIController.closeModal('statementModal')">إغلاق</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Core App Logic -->
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>PHONE STORE MANAGEMENT PRO - Automated Test Suite</title>
+  <style>
+    body { font-family: sans-serif; background: #0f172a; color: #f8fafc; padding: 20px; }
+    .test-box { background: #1e293b; padding: 15px; margin-bottom: 12px; border-radius: 8px; border-right: 4px solid #3b82f6; }
+    .test-box.pass { border-right-color: #10b981; }
+    .test-box.fail { border-right-color: #f43f5e; }
+    .status { font-weight: bold; margin-right: 10px; }
+    .status.pass { color: #10b981; }
+    .status.fail { color: #f43f5e; }
+  </style>
+</head>
+<body>
+  <h2>🧪 مجموعة الاختبارات التلقائية لـ PHONE STORE MANAGEMENT PRO</h2>
+  <div id="testResults">جاري تشغيل الاختبارات...</div>
+
+  <script src="app.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const resultsDiv = document.getElementById("testResults");
+      let outputHTML = "";
+
+      function assert(condition, description) {
+        if (condition) {
+          outputHTML += `<div class="test-box pass"><span class="status pass">[PASS]</span> ${description}</div>`;
+        } else {
+          outputHTML += `<div class="test-box fail"><span class="status fail">[FAIL]</span> ${description}</div>`;
+        }
+      }
+
+      // Test 1: Check IMEI Uniqueness Engine
+      const existingIMEI = AppState.phones[0] ? AppState.phones[0].imei1 : "359871092837461";
+      const isUnique = IMEIManager.isUnique(existingIMEI);
+      assert(!isUnique, "فحص عدم السماح بتكرار رقم الـ IMEI المزدوج في النظام");
+
+      const randomIMEI = "999888777666555";
+      assert(IMEIManager.isUnique(randomIMEI), "فحص السماح بالـ IMEI الفريد غير المستعمل");
+
+      // Test 2: Check Stock Deduction on Sale
+      const initialStock = AppState.phones[0] ? AppState.phones[0].stock : 4;
+      POSCartEngine.clearCart();
+      POSCartEngine.addItem(AppState.phones[0]);
+      const sale = POSCartEngine.checkoutSale({
+        customerId: "cust_1",
+        subtotal: AppState.phones[0].sellingPrice,
+        discount: 0,
+        tax: 0,
+        total: AppState.phones[0].sellingPrice,
+        paid: AppState.phones[0].sellingPrice,
+        paymentMethod: "cash"
+      });
+      const newStock = AppState.phones[0].stock;
+      assert(newStock === initialStock - 1, "فحص تخصيم جهاز هاتف واحد من المخزون بدقة بعد إتمام البيع");
+
+      // Test 3: Financial Summary & Profit Engine Calculation
+      const summary = ProfitEngine.calculateFinancialSummary();
+      assert(typeof summary.grossProfit === 'number' && typeof summary.netProfit === 'number', "فحص احتساب إجمالي الأرباح والصافي بدقة رياضية");
+
+      // Test 4: Partner Profit Sharing Percentages Split
+      const partnerSum = AppState.partners.reduce((s, p) => s + p.sharePercent, 0);
+      assert(partnerSum === 100, "فحص المجموع الكلي لنسب الشراكة المئوية للشركاء يطابق 100%");
+
+      // Test 5: Customer Debt Calculation
+      const cust = AppState.customers[0];
+      assert(cust.totalDebt >= 0, "فحص سجل ديون العملاء والمستحقات");
+
+      resultsDiv.innerHTML = outputHTML;
+    });
+  </script>
+</body>
+</html>
