@@ -1518,6 +1518,155 @@ const UIController = {
   }
 };
 
+/* ==========================================================================
+   9. EXPORT ENGINE (PDF & EXCEL .XLSX ENGINE)
+   ========================================================================== */
+const ExportEngine = {
+  exportToExcel(dataType) {
+    let dataArray = [];
+    const dateStr = new Date().toISOString().slice(0, 10);
+    let fileName = `PHONE_STORE_${dataType.toUpperCase()}_${dateStr}.xlsx`;
+
+    if (dataType === "phones") {
+      dataArray = AppState.phones.map(p => ({
+        "الكود": p.id,
+        "اسم الهاتف": p.name,
+        "الماركة": p.brand,
+        "الموديل": p.model,
+        "IMEI 1": p.imei1 || "-",
+        "IMEI 2": p.imei2 || "-",
+        "السيريال": p.serialNumber || "-",
+        "حالة الجهاز": p.condition === "New" ? "جديد" : "مستعمل",
+        "سعر الشراء (MRU)": p.purchasePrice,
+        "سعر البيع (MRU)": p.sellingPrice,
+        "الكمية بالمخزن": p.stock,
+        "الحالة": p.status
+      }));
+    } else if (dataType === "sales") {
+      dataArray = AppState.sales.map(s => ({
+        "رقم الفاتورة": s.invoiceNo,
+        "التاريخ": new Date(s.date).toLocaleString('ar-EG'),
+        "اسم العميل": s.customerName,
+        "هاتف العميل": s.customerPhone,
+        "الموظف": s.employeeName,
+        "عدد المنتجات": s.items ? s.items.length : 0,
+        "المجموع (MRU)": s.subtotal,
+        "الخصم (MRU)": s.discount,
+        "الإجمالي الصافي (MRU)": s.total,
+        "المدفوع (MRU)": s.paid,
+        "المتبقي (دين)": s.remaining,
+        "طريقة الدفع": s.paymentMethod
+      }));
+    } else if (dataType === "accessories") {
+      dataArray = AppState.accessories.map(a => ({
+        "رمز SKU": a.sku,
+        "الاسم": a.name,
+        "التصنيف": a.category,
+        "الماركة": a.brand,
+        "سعر الشراء (MRU)": a.purchasePrice,
+        "سعر البيع (MRU)": a.sellingPrice,
+        "الكمية المتبقية": a.stock
+      }));
+    } else if (dataType === "customers") {
+      dataArray = AppState.customers.map(c => ({
+        "اسم العميل": c.name,
+        "الهاتف": c.phone,
+        "العنوان": c.address || "-",
+        "إجمالي المشتريات": c.totalPurchases,
+        "إجمالي المدفوعات": c.totalPaid,
+        "الديون المستحقة": c.totalDebt,
+        "الحالة": c.status
+      }));
+    } else if (dataType === "suppliers") {
+      dataArray = AppState.suppliers.map(s => ({
+        "اسم المورد": s.name,
+        "الشركة": s.company,
+        "الهاتف": s.phone,
+        "البريد": s.email || "-",
+        "إجمالي المشتريات": s.totalPurchases,
+        "إجمالي المدفوعات": s.totalPaid,
+        "الديون المستحقة للمورد": s.totalDebt
+      }));
+    } else if (dataType === "expenses") {
+      dataArray = AppState.expenses.map(e => ({
+        "التاريخ": e.date,
+        "التصنيف": e.category,
+        "الوصف والبيان": e.description,
+        "المبلغ (MRU)": e.amount,
+        "المسؤول": e.employee
+      }));
+    } else if (dataType === "partners") {
+      dataArray = AppState.partners.map(p => ({
+        "اسم الشريك": p.name,
+        "نسبة الشراكة": p.sharePercent + "%",
+        "رأس المال (MRU)": p.capital,
+        "الأرباح المستحقة": p.accruedProfit,
+        "المسحوبات": p.paidProfit,
+        "الرصيد المتبقي": p.balance
+      }));
+    }
+
+    if (!dataArray.length) {
+      UIController.showToast("لا توجد بيانات متاحة للتصدير في هذه القائمة.", "warning");
+      return;
+    }
+
+    if (window.XLSX) {
+      const worksheet = XLSX.utils.json_to_sheet(dataArray);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, dataType.toUpperCase());
+      XLSX.writeFile(workbook, fileName);
+      UIController.showToast(`تم تصدير ملف Excel بنجاح (${fileName})!`, "success");
+    } else {
+      let csvContent = "\uFEFF";
+      const headers = Object.keys(dataArray[0]);
+      csvContent += headers.join(",") + "\n";
+      dataArray.forEach(row => {
+        csvContent += headers.map(h => `"${String(row[h] || '').replace(/"/g, '""')}"`).join(",") + "\n";
+      });
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName.replace(".xlsx", ".csv");
+      link.click();
+      UIController.showToast("تم تصدير الملف بصيغة Excel CSV بنجاح!", "success");
+    }
+  },
+
+  exportToPDF(containerId, title) {
+    const element = document.getElementById(containerId);
+    if (!element) {
+      UIController.showToast("تعذر العثور على العنصر للتصدير.", "danger");
+      return;
+    }
+
+    UIController.showToast("جاري تحويل وتجهيز ملف PDF...", "info");
+
+    const opt = {
+      margin:       [8, 8, 8, 8],
+      filename:     `${title}_${new Date().toISOString().slice(0,10)}.pdf`,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true, logging: false },
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
+    };
+
+    if (window.html2pdf) {
+      window.html2pdf().set(opt).from(element).save().then(() => {
+        UIController.showToast("تم تحويل وتصدير ملف الـ PDF بنجاح!", "success");
+      }).catch(err => {
+        window.print();
+      });
+    } else {
+      window.print();
+    }
+  }
+};
+
+window.ExportEngine = ExportEngine;
+window.exportToExcel = (type) => ExportEngine.exportToExcel(type);
+window.exportToPDF = (id, title) => ExportEngine.exportToPDF(id, title);
 window.UIController = UIController;
 window.editPhone = (id) => UIController.editPhone(id);
 window.viewCustomerStatement = (id) => UIController.viewCustomerStatement(id);
