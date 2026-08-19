@@ -1518,6 +1518,12 @@ const UIController = {
   }
 };
 
+window.UIController = UIController;
+window.editPhone = (id) => UIController.editPhone(id);
+window.viewCustomerStatement = (id) => UIController.viewCustomerStatement(id);
+window.viewSupplierStatement = (id) => UIController.viewSupplierStatement(id);
+window.openNewPhoneModal = () => UIController.openNewPhoneModal();
+
 document.addEventListener("DOMContentLoaded", () => {
   UIController.init();
 });
