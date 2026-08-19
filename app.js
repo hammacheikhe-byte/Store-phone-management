@@ -1661,6 +1661,60 @@ const ExportEngine = {
     } else {
       window.print();
     }
+  },
+
+  exportInvoicePDF() {
+    const element = document.getElementById("printableInvoice");
+    if (!element) {
+      UIController.showToast("تعذر العثور على الفاتورة للتصدير.", "danger");
+      return;
+    }
+    UIController.showToast("جاري تحويل وتجهيز الفاتورة بصيغة PDF...", "info");
+
+    const opt = {
+      margin:       [5, 5, 5, 5],
+      filename:     `Invoice_${new Date().toISOString().slice(0,10)}.pdf`,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true },
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    if (window.html2pdf) {
+      window.html2pdf().set(opt).from(element).save().then(() => {
+        UIController.showToast("تم تحويل وتصدير الفاتورة بصيغة PDF بنجاح!", "success");
+      }).catch(() => {
+        window.print();
+      });
+    } else {
+      window.print();
+    }
+  },
+
+  exportStatementPDF() {
+    const element = document.getElementById("statementModalBody");
+    if (!element) {
+      UIController.showToast("تعذر العثور على كشف الحساب.", "danger");
+      return;
+    }
+    UIController.showToast("جاري تحويل وتجهيز كشف الحساب بصيغة PDF...", "info");
+
+    const opt = {
+      margin:       [8, 8, 8, 8],
+      filename:     `Statement_${new Date().toISOString().slice(0,10)}.pdf`,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true },
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    if (window.html2pdf) {
+      window.html2pdf().set(opt).from(element).save().then(() => {
+        UIController.showToast("تم تحويل وتصدير كشف الحساب بصيغة PDF بنجاح!", "success");
+      }).catch(() => {
+        window.print();
+      });
+    } else {
+      window.print();
+    }
   }
 };
 

@@ -1,20 +1,111 @@
-{
-  "name": "Hamma Busness",
-  "short_name": "Hamma",
-  "description": "تطبيق مبيعات ومخزون وعملاء ورأس مال",
-  "start_url": "./index.html",
-  "scope": "./",
-  "display": "standalone",
-  "dir": "rtl",
-  "lang": "ar",
-  "background_color": "#f5f7f4",
-  "theme_color": "#1f7a63",
-  "icons": [
-    {
-      "src": "./icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
-    }
-  ]
+/* ==========================================================================
+   PHONE STORE MANAGEMENT PRO - AUTOMATIC GITHUB PUSH & SYNC SCRIPT
+   ========================================================================== */
+
+const fs = require('fs');
+const path = require('path');
+const https = require('https');
+
+const GITHUB_USER = "hammacheikhe-byte";
+const GITHUB_REPO = "Store-phone-management";
+
+// Target files to automatically sync to GitHub
+const FILES_TO_SYNC = [
+  'index.html',
+  'app.js',
+  'styles.css',
+  'test.html',
+  'manifest.webmanifest',
+  'sw.js',
+  'README.md'
+];
+
+// Get GitHub Token from argument or environment
+const TOKEN = process.argv[2] || process.env.GITHUB_TOKEN;
+
+if (!TOKEN) {
+  console.log("\x1b[31m%s\x1b[0m", "❌ خطأ: يرجى إدخال GitHub Personal Access Token.");
+  console.log("الاستخدام: node sync-to-github.js ghp_xxxxxxxxxxxxxxxxxxxx");
+  process.exit(1);
 }
+
+function makeGitHubRequest(method, pathUrl, bodyData = null) {
+  return new Promise((resolve, reject) => {
+    const options = {
+      hostname: 'api.github.com',
+      port: 443,
+      path: pathUrl,
+      method: method,
+      headers: {
+        'Authorization': `Bearer ${TOKEN}`,
+        'User-Agent': 'PhoneStorePro-AutoSync',
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json'
+      }
+    };
+
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const parsed = JSON.parse(data || '{}');
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            resolve({ statusCode: res.statusCode, data: parsed });
+          } else {
+            resolve({ statusCode: res.statusCode, error: parsed.message || res.statusMessage, data: parsed });
+          }
+        } catch (e) {
+          resolve({ statusCode: res.statusCode, data: data });
+        }
+      });
+    });
+
+    req.on('error', (e) => reject(e));
+    if (bodyData) req.write(JSON.stringify(bodyData));
+    req.end();
+  });
+}
+
+async function syncFileToGitHub(fileName) {
+  const filePath = path.join(__dirname, fileName);
+  if (!fs.existsSync(filePath)) {
+    console.log(`⚠️ الملف ${fileName} غير موجود محلياً.`);
+    return;
+  }
+
+  const content = fs.readFileSync(filePath);
+  const base64Content = content.toString('base64');
+  const apiPath = `/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${fileName}`;
+
+  // 1. Check if file exists on GitHub to get SHA
+  let sha = undefined;
+  const existing = await makeGitHubRequest('GET', apiPath);
+  if (existing.statusCode === 200 && existing.data && existing.data.sha) {
+    sha = existing.data.sha;
+  }
+
+  // 2. Upload/Commit file to GitHub
+  const commitPayload = {
+    message: `Auto Sync: Update ${fileName} at ${new Date().toISOString()}`,
+    content: base64Content,
+    sha: sha
+  };
+
+  const uploadRes = await makeGitHubRequest('PUT', apiPath, commitPayload);
+  if (uploadRes.statusCode === 200 || uploadRes.statusCode === 201) {
+    console.log("\x1b[32m%s\x1b[0m", `✅ تم رفع ومزامنة الملف بنجاح على GitHub: ${fileName}`);
+  } else {
+    console.log("\x1b[31m%s\x1b[0m", `❌ تعذر رفع ${fileName}: ${uploadRes.error || uploadRes.statusCode}`);
+  }
+}
+
+async function runAutoSync() {
+  console.log("\x1b[36m%s\x1b[0m", `🚀 جاري بدء المزامنة التلقائية المباشرة لمستودع ${GITHUB_USER}/${GITHUB_REPO}...`);
+  for (const file of FILES_TO_SYNC) {
+    await syncFileToGitHub(file);
+  }
+  console.log("\x1b[32m%s\x1b[0m", "✨ اكتملت المزامنة السحابية بنجاح 100%! أصبح موقعك محدثاً على GitHub Pages.");
+}
+
+runAutoSync();
