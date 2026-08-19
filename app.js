@@ -56,7 +56,6 @@ let AppState = {
 const DataRepository = {
   init() {
     this.loadState();
-    // Only generate seed data on very first launch if system was never initialized
     if (!AppState.isInitialized && !AppState.phones.length && !AppState.accessories.length) {
       SeedDataEngine.generateSeedData();
       AppState.isInitialized = true;
@@ -238,6 +237,19 @@ const SeedDataEngine = {
         remaining: 20000,
         paymentMethod: "mixed",
         status: "Completed"
+      }
+    ];
+
+    AppState.purchases = [
+      {
+        id: "pur_1001",
+        invoiceNo: "PUR-1001",
+        date: new Date().toISOString(),
+        supplierId: "sup_1",
+        supplierName: "شركة الأمل للاستيراد (دبي)",
+        total: 450000,
+        paid: 400000,
+        remaining: 50000
       }
     ];
 
@@ -617,8 +629,8 @@ const RenderEngine = {
         <td><span class="badge ${p.stock > 0 ? 'badge-info' : 'badge-danger'}">${p.stock} أجهزة</span></td>
         <td><span class="badge badge-success">${p.status}</span></td>
         <td>
-          <button class="btn btn-secondary btn-icon" onclick="UIController.editPhone('${p.id}')"><i class="fa-solid fa-pen"></i></button>
-          <button class="btn btn-danger btn-icon" onclick="UIController.deletePhone('${p.id}')"><i class="fa-solid fa-trash"></i></button>
+          <button class="btn btn-secondary btn-icon" onclick="UIController.editPhone('${p.id}')" title="تعديل بيانات الهاتف"><i class="fa-solid fa-pen"></i></button>
+          <button class="btn btn-danger btn-icon" onclick="UIController.deletePhone('${p.id}')" title="حذف الهاتف"><i class="fa-solid fa-trash"></i></button>
         </td>
       </tr>
     `).join('');
@@ -657,7 +669,7 @@ const RenderEngine = {
         <td>${CurrencyFormatter.format(c.totalPaid, AppState.settings.currency)}</td>
         <td><span class="badge ${c.totalDebt > 0 ? 'badge-danger' : 'badge-success'}">${CurrencyFormatter.format(c.totalDebt, AppState.settings.currency)}</span></td>
         <td>
-          <button class="btn btn-secondary btn-icon" onclick="UIController.viewCustomerStatement('${c.id}')" title="كشف حساب"><i class="fa-solid fa-file-invoice"></i></button>
+          <button class="btn btn-secondary btn-icon" onclick="UIController.viewCustomerStatement('${c.id}')" title="كشف حساب العميل"><i class="fa-solid fa-file-invoice"></i></button>
         </td>
       </tr>
     `).join('');
@@ -676,7 +688,7 @@ const RenderEngine = {
         <td>${CurrencyFormatter.format(s.totalPaid, AppState.settings.currency)}</td>
         <td><span class="badge ${s.totalDebt > 0 ? 'badge-danger' : 'badge-success'}">${CurrencyFormatter.format(s.totalDebt, AppState.settings.currency)}</span></td>
         <td>
-          <button class="btn btn-secondary btn-icon" onclick="UIController.viewSupplierStatement('${s.id}')"><i class="fa-solid fa-file-contract"></i></button>
+          <button class="btn btn-secondary btn-icon" onclick="UIController.viewSupplierStatement('${s.id}')" title="كشف حساب المورد"><i class="fa-solid fa-file-contract"></i></button>
         </td>
       </tr>
     `).join('');
@@ -855,40 +867,206 @@ const UIController = {
     if (elAvatar) elAvatar.textContent = AppState.currentUser.username.slice(0, 3).toUpperCase();
   },
 
+  openNewPhoneModal() {
+    const elEditId = document.getElementById("editingPhoneId");
+    if (elEditId) elEditId.value = "";
+
+    if (document.getElementById("phoneName")) document.getElementById("phoneName").value = "";
+    if (document.getElementById("phoneBrand")) document.getElementById("phoneBrand").value = "Apple";
+    if (document.getElementById("phoneModel")) document.getElementById("phoneModel").value = "";
+    if (document.getElementById("phoneImei1")) document.getElementById("phoneImei1").value = "";
+    if (document.getElementById("phoneImei2")) document.getElementById("phoneImei2").value = "";
+    if (document.getElementById("phoneSerial")) document.getElementById("phoneSerial").value = "";
+    if (document.getElementById("phoneCondition")) document.getElementById("phoneCondition").value = "New";
+    if (document.getElementById("phoneCost")) document.getElementById("phoneCost").value = "";
+    if (document.getElementById("phonePrice")) document.getElementById("phonePrice").value = "";
+    if (document.getElementById("phoneBattery")) document.getElementById("phoneBattery").value = "100";
+    if (document.getElementById("phoneStock")) document.getElementById("phoneStock").value = "1";
+
+    this.openModal("phoneModal");
+  },
+
+  editPhone(phoneId) {
+    const phone = AppState.phones.find(p => p.id === phoneId);
+    if (!phone) {
+      this.showToast("تعذر العثور على بيانات الهاتف المحدد.", "danger");
+      return;
+    }
+
+    if (document.getElementById("editingPhoneId")) document.getElementById("editingPhoneId").value = phone.id;
+    if (document.getElementById("phoneName")) document.getElementById("phoneName").value = phone.name || "";
+    if (document.getElementById("phoneBrand")) document.getElementById("phoneBrand").value = phone.brand || "Apple";
+    if (document.getElementById("phoneModel")) document.getElementById("phoneModel").value = phone.model || "";
+    if (document.getElementById("phoneImei1")) document.getElementById("phoneImei1").value = phone.imei1 || "";
+    if (document.getElementById("phoneImei2")) document.getElementById("phoneImei2").value = phone.imei2 || "";
+    if (document.getElementById("phoneSerial")) document.getElementById("phoneSerial").value = phone.serialNumber || "";
+    if (document.getElementById("phoneCondition")) document.getElementById("phoneCondition").value = phone.condition || "New";
+    if (document.getElementById("phoneCost")) document.getElementById("phoneCost").value = phone.purchasePrice || 0;
+    if (document.getElementById("phonePrice")) document.getElementById("phonePrice").value = phone.sellingPrice || 0;
+    if (document.getElementById("phoneBattery")) document.getElementById("phoneBattery").value = phone.batteryHealth || 100;
+    if (document.getElementById("phoneStock")) document.getElementById("phoneStock").value = phone.stock || 1;
+
+    this.openModal("phoneModal");
+  },
+
+  viewCustomerStatement(custId) {
+    const cust = AppState.customers.find(c => c.id === custId);
+    if (!cust) return;
+
+    const body = document.getElementById("statementModalBody");
+    if (!body) return;
+
+    const sales = AppState.sales.filter(s => s.customerId === custId);
+
+    body.innerHTML = `
+      <div style="padding:16px; font-family:'Cairo', sans-serif;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:2px solid var(--primary); padding-bottom:8px;">
+          <h3 style="color:var(--primary); font-size:18px; font-weight:800; margin:0;">كشف حساب العميل: ${cust.name}</h3>
+          <span class="badge badge-info">الحالة: ${cust.status || 'نشط'}</span>
+        </div>
+        <p style="font-size:13px; color:var(--text-muted); margin-bottom:16px;">الهاتف: ${cust.phone} | العنوان: ${cust.address || '-'}</p>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:20px; text-align:center;">
+          <div style="background:var(--bg-input); padding:12px; border-radius:8px;">
+            <div style="font-size:12px; color:var(--text-muted);">إجمالي المشتريات</div>
+            <strong style="font-size:16px; color:var(--text-main);">${CurrencyFormatter.format(cust.totalPurchases, AppState.settings.currency)}</strong>
+          </div>
+          <div style="background:var(--bg-input); padding:12px; border-radius:8px;">
+            <div style="font-size:12px; color:var(--text-muted);">إجمالي المدفوعات</div>
+            <strong style="font-size:16px; color:var(--accent-emerald);">${CurrencyFormatter.format(cust.totalPaid, AppState.settings.currency)}</strong>
+          </div>
+          <div style="background:var(--bg-input); padding:12px; border-radius:8px;">
+            <div style="font-size:12px; color:var(--text-muted);">الديون المستحقة</div>
+            <strong style="font-size:16px; color:var(--accent-rose);">${CurrencyFormatter.format(cust.totalDebt, AppState.settings.currency)}</strong>
+          </div>
+        </div>
+
+        <h4 style="font-size:14px; font-weight:700; margin-bottom:8px;">سجل الفواتير والعمليات:</h4>
+        <table class="custom-table">
+          <thead>
+            <tr><th>الفاتورة</th><th>التاريخ</th><th>الإجمالي</th><th>المدفوع</th><th>المتبقي</th></tr>
+          </thead>
+          <tbody>
+            ${sales.map(s => `
+              <tr>
+                <td>${s.invoiceNo}</td>
+                <td>${new Date(s.date).toLocaleDateString('ar-EG')}</td>
+                <td>${CurrencyFormatter.format(s.total, AppState.settings.currency)}</td>
+                <td>${CurrencyFormatter.format(s.paid, AppState.settings.currency)}</td>
+                <td style="color:var(--accent-rose); font-weight:700;">${CurrencyFormatter.format(s.remaining, AppState.settings.currency)}</td>
+              </tr>
+            `).join('') || `<tr><td colspan="5" style="text-align:center; color:var(--text-muted);">لا توجد عمليات مبيعات مسجلة</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    const titleEl = document.getElementById("statementModalTitle");
+    if (titleEl) titleEl.textContent = "كشف حساب العميل: " + cust.name;
+    this.openModal("statementModal");
+  },
+
+  viewSupplierStatement(supId) {
+    const sup = AppState.suppliers.find(s => s.id === supId);
+    if (!sup) return;
+
+    const body = document.getElementById("statementModalBody");
+    if (!body) return;
+
+    const purchases = AppState.purchases.filter(p => p.supplierId === supId);
+
+    body.innerHTML = `
+      <div style="padding:16px; font-family:'Cairo', sans-serif;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:2px solid var(--primary); padding-bottom:8px;">
+          <h3 style="color:var(--primary); font-size:18px; font-weight:800; margin:0;">كشف حساب المورد: ${sup.name}</h3>
+          <span class="badge badge-purple">${sup.company || '-'}</span>
+        </div>
+        <p style="font-size:13px; color:var(--text-muted); margin-bottom:16px;">الهاتف: ${sup.phone} | البريد: ${sup.email || '-'}</p>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:20px; text-align:center;">
+          <div style="background:var(--bg-input); padding:12px; border-radius:8px;">
+            <div style="font-size:12px; color:var(--text-muted);">إجمالي المشتريات</div>
+            <strong style="font-size:16px; color:var(--text-main);">${CurrencyFormatter.format(sup.totalPurchases, AppState.settings.currency)}</strong>
+          </div>
+          <div style="background:var(--bg-input); padding:12px; border-radius:8px;">
+            <div style="font-size:12px; color:var(--text-muted);">إجمالي المدفوعات</div>
+            <strong style="font-size:16px; color:var(--accent-emerald);">${CurrencyFormatter.format(sup.totalPaid, AppState.settings.currency)}</strong>
+          </div>
+          <div style="background:var(--bg-input); padding:12px; border-radius:8px;">
+            <div style="font-size:12px; color:var(--text-muted);">المبالغ المستحقة (دين المورد)</div>
+            <strong style="font-size:16px; color:var(--accent-rose);">${CurrencyFormatter.format(sup.totalDebt, AppState.settings.currency)}</strong>
+          </div>
+        </div>
+
+        <h4 style="font-size:14px; font-weight:700; margin-bottom:8px;">سجل التعاملات والشحنات:</h4>
+        <table class="custom-table">
+          <thead>
+            <tr><th>الفاتورة/الشحنة</th><th>التاريخ</th><th>الإجمالي</th><th>المدفوع</th><th>المتبقي</th></tr>
+          </thead>
+          <tbody>
+            ${purchases.map(p => `
+              <tr>
+                <td>${p.invoiceNo || p.id}</td>
+                <td>${new Date(p.date).toLocaleDateString('ar-EG')}</td>
+                <td>${CurrencyFormatter.format(p.total, AppState.settings.currency)}</td>
+                <td>${CurrencyFormatter.format(p.paid, AppState.settings.currency)}</td>
+                <td style="color:var(--accent-rose); font-weight:700;">${CurrencyFormatter.format(p.remaining, AppState.settings.currency)}</td>
+              </tr>
+            `).join('') || `<tr><td colspan="5" style="text-align:center; color:var(--text-muted);">لا توجد مشتريات مسجلة حالياً لهذا المورد</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    const titleEl = document.getElementById("statementModalTitle");
+    if (titleEl) titleEl.textContent = "كشف حساب المورد: " + sup.name;
+    this.openModal("statementModal");
+  },
+
   async syncWithGitHubCloud(silent = false) {
-    const token = document.getElementById("setGithubToken")?.value || AppState.settings.githubToken;
-    const repo = document.getElementById("setGithubRepo")?.value || AppState.settings.githubRepo || "Store-phone-management";
-    const user = AppState.settings.githubUser || "hammacheikhe-byte";
+    const rawToken = document.getElementById("setGithubToken")?.value || AppState.settings.githubToken;
+    const token = (rawToken || "").trim();
+    const repo = (document.getElementById("setGithubRepo")?.value || AppState.settings.githubRepo || "Store-phone-management").trim();
+    const user = (AppState.settings.githubUser || "hammacheikhe-byte").trim();
 
     if (!token) {
       if (!silent) this.showToast("يرجى إدخال GitHub Personal Access Token من الإعدادات أولاً.", "warning");
       return;
     }
 
+    AppState.settings.githubToken = token;
+    AppState.settings.githubRepo = repo;
+    DataRepository.saveState();
+
     const statusEl = document.getElementById("githubSyncStatus");
-    if (statusEl) statusEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> جاري المزامنة السحابية مع GitHub...`;
+    if (statusEl) statusEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> جاري الاتصال بمستودع GitHub (${user}/${repo})...`;
 
     try {
       const contentStr = btoa(unescape(encodeURIComponent(JSON.stringify(AppState, null, 2))));
       const apiUrl = `https://api.github.com/repos/${user}/${repo}/contents/dashboard-pos-data.json`;
 
+      const headers = {
+        "Authorization": `Bearer ${token}`,
+        "Accept": "application/vnd.github.v3+json",
+        "Content-Type": "application/json"
+      };
+
       let sha = "";
       try {
-        const getRes = await fetch(apiUrl, {
-          headers: { "Authorization": `token ${token}` }
-        });
+        const getRes = await fetch(apiUrl, { headers });
         if (getRes.ok) {
           const fileData = await getRes.json();
           sha = fileData.sha;
+        } else if (getRes.status === 401) {
+          throw new Error("خطأ 401: التوكن غير صحيح أو انتهت صلاحيته (Unauthorized)");
         }
-      } catch (e) {}
+      } catch (e) {
+        if (e.message.includes("401")) throw e;
+      }
 
       const putRes = await fetch(apiUrl, {
         method: "PUT",
-        headers: {
-          "Authorization": `token ${token}`,
-          "Content-Type": "application/json"
-        },
+        headers,
         body: JSON.stringify({
           message: `Auto Sync database snapshot at ${new Date().toISOString()}`,
           content: contentStr,
@@ -897,11 +1075,18 @@ const UIController = {
       });
 
       if (putRes.ok) {
-        if (statusEl) statusEl.innerHTML = `<i class="fa-solid fa-cloud-check"></i> تمت المزامنة بنجاح مع سحابة GitHub (${repo})!`;
+        if (statusEl) statusEl.innerHTML = `<i class="fa-solid fa-cloud-check"></i> تمت المزامنة بنجاح وحفظ البيانات على سحابة GitHub (${repo})!`;
         if (!silent) this.showToast("تمت المزامنة السحابية وحفظ نسخة البيانات على GitHub بنجاح!", "success");
         AuditLogEngine.log("مزامنة GitHub", `تم حفظ النسخة السحابية على مستودع ${repo}.`);
       } else {
-        throw new Error("فشل المزامنة مع GitHub API");
+        const errJson = await putRes.json().catch(() => ({}));
+        let detailMsg = errJson.message || `رمز الاستجابة ${putRes.status}`;
+        if (putRes.status === 404) {
+          detailMsg = `المستودع "${repo}" غير موجود بالحساب "${user}" أو التوكن ينقصه صلاحية 'repo'`;
+        } else if (putRes.status === 401) {
+          detailMsg = "التوكن غير صحيح أو انتهت صلاحيته";
+        }
+        throw new Error(detailMsg);
       }
     } catch (err) {
       if (statusEl) statusEl.innerHTML = `<i class="fa-solid fa-cloud-xmark" style="color:var(--accent-rose);"></i> تعذرت المزامنة: ${err.message}`;
@@ -1002,8 +1187,10 @@ const UIController = {
     if (editingId) {
       const idx = AppState.phones.findIndex(p => p.id === editingId);
       if (idx !== -1) AppState.phones[idx] = { ...AppState.phones[idx], ...phoneData };
+      AuditLogEngine.log("تعديل هاتف", `تم تعديل بيانات الهاتف ${phoneData.name} (IMEI: ${phoneData.imei1}).`);
     } else {
       AppState.phones.unshift(phoneData);
+      AuditLogEngine.log("إضافة هاتف", `تمت إضافة هاتف جديد ${phoneData.name} (IMEI: ${phoneData.imei1}).`);
     }
 
     DataRepository.saveState();
@@ -1191,58 +1378,6 @@ const UIController = {
     `;
 
     this.openModal("invoiceModal");
-  },
-
-  viewCustomerStatement(custId) {
-    const cust = AppState.customers.find(c => c.id === custId);
-    if (!cust) return;
-
-    const body = document.getElementById("statementModalBody");
-    if (!body) return;
-
-    const sales = AppState.sales.filter(s => s.customerId === custId);
-
-    body.innerHTML = `
-      <div style="padding:16px; font-family:'Cairo', sans-serif;">
-        <h3 style="color:var(--primary); font-size:18px; font-weight:800; margin-bottom:4px;">كشف حساب العميل: ${cust.name}</h3>
-        <p style="font-size:13px; color:var(--text-muted); margin-bottom:16px;">الهاتف: ${cust.phone} | العنوان: ${cust.address || '-'}</p>
-
-        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:20px; text-align:center;">
-          <div style="background:var(--bg-input); padding:12px; border-radius:8px;">
-            <div style="font-size:12px; color:var(--text-muted);">إجمالي المشتريات</div>
-            <strong style="font-size:16px; color:var(--text-main);">${CurrencyFormatter.format(cust.totalPurchases, AppState.settings.currency)}</strong>
-          </div>
-          <div style="background:var(--bg-input); padding:12px; border-radius:8px;">
-            <div style="font-size:12px; color:var(--text-muted);">إجمالي المدفوعات</div>
-            <strong style="font-size:16px; color:var(--accent-emerald);">${CurrencyFormatter.format(cust.totalPaid, AppState.settings.currency)}</strong>
-          </div>
-          <div style="background:var(--bg-input); padding:12px; border-radius:8px;">
-            <div style="font-size:12px; color:var(--text-muted);">الديون المستحقة</div>
-            <strong style="font-size:16px; color:var(--accent-rose);">${CurrencyFormatter.format(cust.totalDebt, AppState.settings.currency)}</strong>
-          </div>
-        </div>
-
-        <h4 style="font-size:14px; font-weight:700; margin-bottom:8px;">سجل الفواتير والعمليات:</h4>
-        <table class="custom-table">
-          <thead>
-            <tr><th>الفاتورة</th><th>التاريخ</th><th>الإجمالي</th><th>المدفوع</th><th>المتبقي</th></tr>
-          </thead>
-          <tbody>
-            ${sales.map(s => `
-              <tr>
-                <td>${s.invoiceNo}</td>
-                <td>${new Date(s.date).toLocaleDateString('ar-EG')}</td>
-                <td>${CurrencyFormatter.format(s.total, AppState.settings.currency)}</td>
-                <td>${CurrencyFormatter.format(s.paid, AppState.settings.currency)}</td>
-                <td style="color:var(--accent-rose); font-weight:700;">${CurrencyFormatter.format(s.remaining, AppState.settings.currency)}</td>
-              </tr>
-            `).join('') || `<tr><td colspan="5" style="text-align:center; color:var(--text-muted);">لا توجد عمليات مبيعات مسجلة</td></tr>`}
-          </tbody>
-        </table>
-      </div>
-    `;
-
-    this.openModal("statementModal");
   },
 
   handleGlobalSearch(query) {

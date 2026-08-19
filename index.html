@@ -335,7 +335,7 @@
               <p>سجل الأجهزة والتتبع الدقيق برقم الـ IMEI 1 و IMEI 2 وحالة كل جهاز</p>
             </div>
             <div class="section-actions">
-              <button class="btn btn-primary" onclick="UIController.openModal('phoneModal')"><i class="fa-solid fa-plus"></i> إضافة هاتف جديد</button>
+              <button class="btn btn-primary" onclick="UIController.openNewPhoneModal()"><i class="fa-solid fa-plus"></i> إضافة هاتف جديد</button>
             </div>
           </div>
           <div class="card-box">
@@ -847,6 +847,21 @@
       <div class="modal-footer">
         <button class="btn btn-primary" onclick="UIController.printCurrentInvoice()"><i class="fa-solid fa-print"></i> طباعة الفاتورة الآن</button>
         <button class="btn btn-secondary" onclick="UIController.closeModal('invoiceModal')">إغلاق</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Statement Modal -->
+  <div id="statementModal" class="modal-overlay">
+    <div class="modal-content" style="max-width:750px;">
+      <div class="modal-header">
+        <h3 id="statementModalTitle" style="font-size:16px; font-weight:800;"><i class="fa-solid fa-file-invoice"></i> كشف حساب تفصيلي</h3>
+        <button class="btn btn-secondary btn-icon" onclick="UIController.closeModal('statementModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body" id="statementModalBody"></div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="window.print()"><i class="fa-solid fa-print"></i> طباعة كشف الحساب</button>
+        <button class="btn btn-secondary" onclick="UIController.closeModal('statementModal')">إغلاق</button>
       </div>
     </div>
   </div>
