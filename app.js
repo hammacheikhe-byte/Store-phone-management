@@ -1568,25 +1568,181 @@ const UIController = {
     this.showToast("تم حفظ الإكسسوار بنجاح", "success");
   },
 
+  openNewCustomerModal() {
+    if (document.getElementById("editingCustomerId")) document.getElementById("editingCustomerId").value = "";
+    const title = document.getElementById("customerModalTitle");
+    if (title) title.innerHTML = `<i class="fa-solid fa-user-plus"></i> إضافة عميل جديد`;
+    if (document.getElementById("custName")) document.getElementById("custName").value = "";
+    if (document.getElementById("custPhone")) document.getElementById("custPhone").value = "";
+    if (document.getElementById("custAddress")) document.getElementById("custAddress").value = "";
+    if (document.getElementById("custInitialDebt")) document.getElementById("custInitialDebt").value = "0";
+    if (document.getElementById("custInitialDebtGroup")) document.getElementById("custInitialDebtGroup").style.display = "block";
+    this.openModal("customerModal");
+  },
+
+  editCustomer(custId) {
+    const cust = AppState.customers.find(c => c.id === custId);
+    if (!cust) return;
+
+    if (document.getElementById("editingCustomerId")) document.getElementById("editingCustomerId").value = cust.id;
+    const title = document.getElementById("customerModalTitle");
+    if (title) title.innerHTML = `<i class="fa-solid fa-user-pen"></i> تعديل بيانات العميل`;
+    if (document.getElementById("custName")) document.getElementById("custName").value = cust.name;
+    if (document.getElementById("custPhone")) document.getElementById("custPhone").value = cust.phone;
+    if (document.getElementById("custAddress")) document.getElementById("custAddress").value = cust.address || "";
+    if (document.getElementById("custInitialDebtGroup")) document.getElementById("custInitialDebtGroup").style.display = "none";
+    this.openModal("customerModal");
+  },
+
+  deleteCustomer(custId) {
+    const cust = AppState.customers.find(c => c.id === custId);
+    if (!cust) return;
+    if (!confirm(`هل أنت تأكد من حذف العميل "${cust.name}"؟`)) return;
+
+    AppState.customers = AppState.customers.filter(c => c.id !== custId);
+    DataRepository.saveState();
+    RenderEngine.renderCustomersTable();
+    RenderEngine.renderDashboard();
+    RenderEngine.renderPOSCustomersDropdown();
+    this.showToast(`تم حذف العميل ${cust.name} بنجاح.`, "info");
+  },
+
+  openDebtModal(custId) {
+    const cust = AppState.customers.find(c => c.id === custId);
+    if (!cust) return;
+
+    if (document.getElementById("debtCustId")) document.getElementById("debtCustId").value = cust.id;
+    if (document.getElementById("debtCustName")) document.getElementById("debtCustName").textContent = cust.name;
+    if (document.getElementById("debtCustCurrentAmount")) document.getElementById("debtCustCurrentAmount").textContent = CurrencyFormatter.format(cust.totalDebt || 0, AppState.settings.currency);
+    if (document.getElementById("debtAmountInput")) document.getElementById("debtAmountInput").value = "";
+    if (document.getElementById("debtNotesInput")) document.getElementById("debtNotesInput").value = "";
+    this.updateDebtModalFields();
+    this.openModal("editDebtModal");
+  },
+
+  updateDebtModalFields() {
+    const adjustType = document.getElementById("debtAdjustType")?.value || "pay";
+    const label = document.getElementById("debtAmountLabel");
+    if (label) {
+      if (adjustType === "pay") label.textContent = "المبلغ المدفوع كاش لتسديد الدين (MRU):";
+      else if (adjustType === "add") label.textContent = "المبلغ المراد إضافته على الدين (MRU):";
+      else if (adjustType === "set") label.textContent = "قيمة رصيد الدين الصافي الجديد (MRU):";
+    }
+  },
+
+  saveDebtAdjustment(e) {
+    if (e) e.preventDefault();
+    const custId = document.getElementById("debtCustId")?.value;
+    const cust = AppState.customers.find(c => c.id === custId);
+    if (!cust) {
+      this.showToast("لم يتم العثور على العميل المحدد.", "danger");
+      return;
+    }
+
+    const adjustType = document.getElementById("debtAdjustType")?.value || "pay";
+    const amount = Number(document.getElementById("debtAmountInput")?.value) || 0;
+    const method = document.getElementById("debtPaymentMethod")?.value || "cash";
+    const notes = (document.getElementById("debtNotesInput")?.value || "").trim();
+
+    const oldDebt = cust.totalDebt || 0;
+
+    if (adjustType === "pay") {
+      cust.totalPaid = (cust.totalPaid || 0) + amount;
+      cust.totalDebt = Math.max(0, oldDebt - amount);
+      AuditLogEngine.log("تسديد دين عميل", `تسديد دفعة بقيمة ${CurrencyFormatter.format(amount, AppState.settings.currency)} من العميل ${cust.name} (طريقة: ${method}). ${notes}`);
+      this.showToast(`تم تسديد ${CurrencyFormatter.format(amount, AppState.settings.currency)} وتحديث رصيد العميل ${cust.name} بنجاح!`, "success");
+    } else if (adjustType === "add") {
+      cust.totalDebt = oldDebt + amount;
+      AuditLogEngine.log("إضافة دين عميل", `إضافة مديونية جديدة بقيمة ${CurrencyFormatter.format(amount, AppState.settings.currency)} على العميل ${cust.name}. ${notes}`);
+      this.showToast(`تمت إضافة دين بمبلغ ${CurrencyFormatter.format(amount, AppState.settings.currency)} على العميل ${cust.name}`, "warning");
+    } else if (adjustType === "set") {
+      cust.totalDebt = amount;
+      AuditLogEngine.log("تعديل يدوي لدين عميل", `تعديل رصيد الدين للعميل ${cust.name} من ${CurrencyFormatter.format(oldDebt, AppState.settings.currency)} إلى ${CurrencyFormatter.format(amount, AppState.settings.currency)}. ${notes}`);
+      this.showToast(`تم تعديل دين العميل ${cust.name} إلى ${CurrencyFormatter.format(amount, AppState.settings.currency)}`, "info");
+    }
+
+    DataRepository.saveState();
+    RenderEngine.renderCustomersTable();
+    RenderEngine.renderDashboard();
+    RenderEngine.renderPOSCustomersDropdown();
+    this.closeModal("editDebtModal");
+  },
+
+  quickAdjustStock(type, id) {
+    if (type === "phone") {
+      const phone = AppState.phones.find(p => p.id === id);
+      if (!phone) return;
+      const inputVal = prompt(`تعديل الكمية المتاحة بالمخزن للهاتف (${phone.name}):`, phone.stock);
+      if (inputVal === null) return;
+      const newQty = parseInt(inputVal, 10);
+      if (isNaN(newQty) || newQty < 0) {
+        this.showToast("يرجى إدخال عدد صحيح للكمية.", "warning");
+        return;
+      }
+      phone.stock = newQty;
+      DataRepository.saveState();
+      RenderEngine.renderInventoryTable();
+      RenderEngine.renderPhonesTable();
+      RenderEngine.renderDashboard();
+      this.showToast(`تم تحديث مخزون ${phone.name} إلى ${newQty} جهاز`, "success");
+    } else if (type === "accessory") {
+      const acc = AppState.accessories.find(a => a.id === id);
+      if (!acc) return;
+      const inputVal = prompt(`تعديل الكمية المتاحة بالمخزن للإكسسوار (${acc.name}):`, acc.stock);
+      if (inputVal === null) return;
+      const newQty = parseInt(inputVal, 10);
+      if (isNaN(newQty) || newQty < 0) {
+        this.showToast("يرجى إدخال عدد صحيح للكمية.", "warning");
+        return;
+      }
+      acc.stock = newQty;
+      DataRepository.saveState();
+      RenderEngine.renderInventoryTable();
+      RenderEngine.renderAccessoriesTable();
+      RenderEngine.renderDashboard();
+      this.showToast(`تم تحديث مخزون ${acc.name} إلى ${newQty} قطعة`, "success");
+    }
+  },
+
   saveCustomerForm(e) {
     if (e) e.preventDefault();
-    const newCust = {
-      id: "cust_" + Date.now(),
-      name: document.getElementById("custName").value,
-      phone: document.getElementById("custPhone").value,
-      address: document.getElementById("custAddress").value,
-      totalPurchases: 0,
-      totalPaid: 0,
-      totalDebt: 0,
-      status: "Active"
-    };
+    const editingId = document.getElementById("editingCustomerId")?.value;
+    const name = document.getElementById("custName").value.trim();
+    const phone = document.getElementById("custPhone").value.trim();
+    const address = document.getElementById("custAddress").value.trim();
+    const initialDebt = Number(document.getElementById("custInitialDebt")?.value) || 0;
 
-    AppState.customers.unshift(newCust);
+    if (editingId) {
+      const cust = AppState.customers.find(c => c.id === editingId);
+      if (cust) {
+        cust.name = name;
+        cust.phone = phone;
+        cust.address = address;
+        this.showToast(`تم تحديث بيانات العميل ${name} بنجاح.`, "success");
+      }
+    } else {
+      const newCust = {
+        id: "cust_" + Date.now(),
+        name: name,
+        phone: phone,
+        address: address,
+        totalPurchases: 0,
+        totalPaid: 0,
+        totalDebt: initialDebt,
+        status: "Active"
+      };
+      AppState.customers.unshift(newCust);
+      if (initialDebt > 0) {
+        AuditLogEngine.log("إضافة عميل جديد", `تسجيل العميل ${name} مع مديونية أولية قدرها ${CurrencyFormatter.format(initialDebt, AppState.settings.currency)}.`);
+      }
+      this.showToast(`تم إضافة العميل ${name} بنجاح`, "success");
+    }
+
     DataRepository.saveState();
     RenderEngine.renderCustomersTable();
     RenderEngine.renderPOSCustomersDropdown();
+    RenderEngine.renderDashboard();
     this.closeModal("customerModal");
-    this.showToast("تم إضافة العميل بنجاح", "success");
   },
 
   saveSupplierForm(e) {
