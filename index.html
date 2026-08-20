@@ -108,6 +108,10 @@
         </a>
 
         <div class="menu-group-title">المخزون والمنتجات</div>
+        <a href="#" class="menu-item" data-page="inventory" onclick="UIController.switchPage('inventory')">
+          <div class="menu-item-content"><i class="fa-solid fa-boxes-stacked"></i> <span class="menu-item-text">قائمة المخزون الشاملة</span></div>
+          <span class="menu-badge" style="background:var(--accent-emerald);">شامل</span>
+        </a>
         <a href="#" class="menu-item" data-page="phones" onclick="UIController.switchPage('phones')">
           <div class="menu-item-content"><i class="fa-solid fa-mobile-retro"></i> <span class="menu-item-text">إدارة الهواتف (IMEI)</span></div>
         </a>
@@ -347,6 +351,66 @@
                   <i class="fa-solid fa-check-circle"></i> تأكيد البيع وإصدار الفاتورة
                 </button>
               </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- INVENTORY PAGE VIEW -->
+        <section id="inventoryPage" class="page-view">
+          <div class="section-header">
+            <div class="section-title">
+              <h2><i class="fa-solid fa-boxes-stacked" style="color:var(--accent-emerald);"></i> إدارة وتدقيق المخزون الشاملة</h2>
+              <p>متابعة وتدقيق جرد الهواتف والإكسسوارات، قيم التكلفة والبيع، والتعديل الفوري للكميات</p>
+            </div>
+            <div class="section-actions">
+              <button class="btn btn-secondary btn-sm" onclick="ExportEngine.exportToExcel('inventory')"><i class="fa-solid fa-file-excel" style="color:#10b981;"></i> تصدير Excel</button>
+              <button class="btn btn-secondary btn-sm" onclick="ExportEngine.exportToPDF('inventoryTableCard', 'تقرير_المخزون_الشامل')"><i class="fa-solid fa-file-pdf" style="color:#f43f5e;"></i> تصدير PDF</button>
+              <button class="btn btn-primary btn-sm" onclick="UIController.openNewPhoneModal()"><i class="fa-solid fa-mobile-screen-button"></i> + هاتف جديد</button>
+              <button class="btn btn-primary btn-sm" onclick="UIController.openModal('accessoryModal')"><i class="fa-solid fa-plug"></i> + إكسسوار جديد</button>
+            </div>
+          </div>
+
+          <!-- Inventory Summary KPI Cards -->
+          <div class="kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); margin-bottom:20px;">
+            <div class="kpi-card">
+              <div class="kpi-header"><span class="kpi-title">إجمالي تكلفة المخزون</span><div class="kpi-icon primary"><i class="fa-solid fa-vault"></i></div></div>
+              <div class="kpi-body"><div class="kpi-value" id="invCostValue" style="font-size:22px;">0 MRU</div></div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-header"><span class="kpi-title">القيمة البيعية المتوقعة</span><div class="kpi-icon success"><i class="fa-solid fa-sack-dollar"></i></div></div>
+              <div class="kpi-body"><div class="kpi-value" id="invRetailValue" style="font-size:22px;">0 MRU</div></div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-header"><span class="kpi-title">عدد الهواتف بالمخزن</span><div class="kpi-icon purple"><i class="fa-solid fa-mobile-retro"></i></div></div>
+              <div class="kpi-body"><div class="kpi-value" id="invPhonesCount" style="font-size:22px;">0 جهاز</div></div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-header"><span class="kpi-title">عدد الإكسسوارات</span><div class="kpi-icon amber"><i class="fa-solid fa-headphones"></i></div></div>
+              <div class="kpi-body"><div class="kpi-value" id="invAccCount" style="font-size:22px;">0 قطعة</div></div>
+            </div>
+          </div>
+
+          <!-- Search & Filter Controls -->
+          <div class="card-box" id="inventoryTableCard">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
+              <div style="display:flex; gap:10px; flex:1; min-width:280px;">
+                <input type="text" id="inventorySearchInput" class="form-control" placeholder="ابحث باسم المنتج، الكود، IMEI، أو SKU..." oninput="RenderEngine.renderInventoryTable()" />
+                <select id="inventoryTypeFilter" class="form-control" style="width:180px;" onchange="RenderEngine.renderInventoryTable()">
+                  <option value="all">جميع منتجات المخزون</option>
+                  <option value="phones">الهواتف الذكية فقط</option>
+                  <option value="accessories">الإكسسوارات فقط</option>
+                  <option value="low">المنخفض والمنتهي (نواقص)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="custom-table">
+                <thead>
+                  <tr><th>الكود / المعرف</th><th>المنتج والماركة</th><th>النوع والتصنيف</th><th>سعر الشراء</th><th>سعر البيع</th><th>الكمية المتبقية</th><th>إجمالي قيمة الأصناف</th><th>حالة المخزون</th><th>إجراءات المخزون</th></tr>
+                </thead>
+                <tbody id="inventoryTableBody"></tbody>
+              </table>
             </div>
           </div>
         </section>
@@ -789,13 +853,14 @@
   <div id="customerModal" class="modal-overlay">
     <div class="modal-content">
       <div class="modal-header">
-        <h3 style="font-size:16px; font-weight:800;"><i class="fa-solid fa-user-plus"></i> إضافة عميل جديد</h3>
+        <h3 id="customerModalTitle" style="font-size:16px; font-weight:800;"><i class="fa-solid fa-user-plus"></i> إضافة / تعديل بيانات العميل</h3>
         <button class="btn btn-secondary btn-icon" onclick="UIController.closeModal('customerModal')"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <form onsubmit="UIController.saveCustomerForm(event)">
         <div class="modal-body">
+          <input type="hidden" id="editingCustomerId" value="" />
           <div class="form-group">
-            <label class="form-label">اسم العميل:</label>
+            <label class="form-label">اسم العميل الكلي:</label>
             <input type="text" id="custName" class="form-control" placeholder="الاسم الكامل" required />
           </div>
           <div class="form-group">
@@ -803,13 +868,69 @@
             <input type="text" id="custPhone" class="form-control" placeholder="36 00 00 00" required />
           </div>
           <div class="form-group">
-            <label class="form-label">العنوان:</label>
+            <label class="form-label">العنوان والحي:</label>
             <input type="text" id="custAddress" class="form-control" placeholder="المدينة / الحي" />
+          </div>
+          <div class="form-group" id="custInitialDebtGroup">
+            <label class="form-label">الديون السابقة / المديونية الأولية (إن وجدت):</label>
+            <input type="number" id="custInitialDebt" class="form-control" placeholder="0" value="0" />
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" onclick="UIController.closeModal('customerModal')">إلغاء</button>
-          <button type="submit" class="btn btn-primary">حفظ العميل</button>
+          <button type="submit" class="btn btn-primary">حفظ بيانات العميل</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Customer Debt Adjustment Modal -->
+  <div id="editDebtModal" class="modal-overlay">
+    <div class="modal-content" style="max-width:550px;">
+      <div class="modal-header">
+        <h3 style="font-size:16px; font-weight:800;"><i class="fa-solid fa-coins" style="color:var(--accent-amber);"></i> تسديد وتعديل مديونية العميل</h3>
+        <button class="btn btn-secondary btn-icon" onclick="UIController.closeModal('editDebtModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="UIController.saveDebtAdjustment(event)">
+        <div class="modal-body">
+          <input type="hidden" id="debtCustId" value="" />
+          <div style="background:var(--bg-input); padding:14px; border-radius:8px; margin-bottom:16px; text-align:center; border:1px solid var(--border-color);">
+            <div style="font-size:12.5px; color:var(--text-muted);">اسم العميل: <strong id="debtCustName" style="color:var(--text-main); font-size:14px;">-</strong></div>
+            <div style="font-size:13px; margin-top:6px;">الرصيد والقيمة المستحقة حالياً: <strong id="debtCustCurrentAmount" style="color:var(--accent-rose); font-size:19px; display:inline-block; margin-right:4px;">0 MRU</strong></div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">نوع عملية التعديل / التسديد:</label>
+            <select id="debtAdjustType" class="form-control" onchange="UIController.updateDebtModalFields()">
+              <option value="pay">تسديد دفعة/مبلغ كاش من الدين (إنقاص الدين)</option>
+              <option value="add">إضافة دين جديد / مديونية إضافية (زيادة الدين)</option>
+              <option value="set">تعديل مباشر وقسري لقيمة الدين الصافي</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" id="debtAmountLabel">المبلغ المدفوع/المُعدل (MRU):</label>
+            <input type="number" id="debtAmountInput" class="form-control" placeholder="أدخل المبلغ بأوقية" required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">طريقة الدفع والتسديد:</label>
+            <select id="debtPaymentMethod" class="form-control">
+              <option value="cash">نقدي كاش (Cash)</option>
+              <option value="bank">تحويل بنكي (Bankily / Masrvi)</option>
+              <option value="card">بطاقة مصرفية</option>
+              <option value="adjustment">تسوية دفتري يدوي</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">بيان وملاحظات التسديد:</label>
+            <input type="text" id="debtNotesInput" class="form-control" placeholder="مثال: تسديد دفعة نقداً في محل المتجر" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="UIController.closeModal('editDebtModal')">إلغاء</button>
+          <button type="submit" class="btn btn-success"><i class="fa-solid fa-check"></i> حفظ وتحديث رصيد الدين</button>
         </div>
       </form>
     </div>
@@ -925,6 +1046,6 @@
   <!-- PDF Export Engine (html2pdf) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <!-- Core App Logic -->
-  <script src="app.js?v=3.0.7"></script>
+  <script src="app.js?v=3.0.8"></script>
 </body>
 </html>

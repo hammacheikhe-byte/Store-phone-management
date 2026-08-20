@@ -494,6 +494,7 @@ const RenderEngine = {
     this.renderDashboard();
     this.renderPOSProducts();
     this.renderPOSCustomersDropdown();
+    this.renderInventoryTable();
     this.renderPhonesTable();
     this.renderAccessoriesTable();
     this.renderCustomersTable();
@@ -751,6 +752,111 @@ const RenderEngine = {
     `).join('');
   },
 
+  renderInventoryTable() {
+    const tbody = document.getElementById("inventoryTableBody");
+    if (!tbody) return;
+
+    const searchTerm = (document.getElementById("inventorySearchInput")?.value || "").toLowerCase().trim();
+    const typeFilter = document.getElementById("inventoryTypeFilter")?.value || "all";
+
+    let combinedItems = [];
+
+    AppState.phones.forEach(p => {
+      combinedItems.push({
+        id: p.id,
+        code: p.imei1 || p.barcode || `#${p.id.replace('ph_', '')}`,
+        name: p.name,
+        brandModel: `${p.brand} - ${p.model || ''}`,
+        type: 'phone',
+        typeLabel: 'هاتف ذكي',
+        categoryBadge: 'badge-info',
+        purchaseCost: Number(p.purchasePrice) || 0,
+        sellingPrice: Number(p.sellingPrice) || 0,
+        stock: Number(p.stock) || 0,
+        isLow: p.stock <= (AppState.settings.lowStockThreshold || 3),
+        totalVal: (Number(p.purchasePrice) || 0) * (Number(p.stock) || 0)
+      });
+    });
+
+    AppState.accessories.forEach(a => {
+      combinedItems.push({
+        id: a.id,
+        code: a.sku || a.barcode || `#${a.id}`,
+        name: a.name,
+        brandModel: `${a.brand} - ${a.category}`,
+        type: 'accessory',
+        typeLabel: 'إكسسوار',
+        categoryBadge: 'badge-purple',
+        purchaseCost: Number(a.purchasePrice) || 0,
+        sellingPrice: Number(a.sellingPrice) || 0,
+        stock: Number(a.stock) || 0,
+        isLow: a.stock <= a.minStock,
+        totalVal: (Number(a.purchasePrice) || 0) * (Number(a.stock) || 0)
+      });
+    });
+
+    let totalCostVal = 0;
+    let totalRetailVal = 0;
+    let totalPhonesStock = 0;
+    let totalAccStock = 0;
+
+    combinedItems.forEach(item => {
+      totalCostVal += (item.purchaseCost * item.stock);
+      totalRetailVal += (item.sellingPrice * item.stock);
+      if (item.type === 'phone') totalPhonesStock += item.stock;
+      if (item.type === 'accessory') totalAccStock += item.stock;
+    });
+
+    if (document.getElementById("invCostValue")) document.getElementById("invCostValue").textContent = CurrencyFormatter.format(totalCostVal, AppState.settings.currency);
+    if (document.getElementById("invRetailValue")) document.getElementById("invRetailValue").textContent = CurrencyFormatter.format(totalRetailVal, AppState.settings.currency);
+    if (document.getElementById("invPhonesCount")) document.getElementById("invPhonesCount").textContent = totalPhonesStock + " جهاز متوفر";
+    if (document.getElementById("invAccCount")) document.getElementById("invAccCount").textContent = totalAccStock + " قطعة متوفرة";
+
+    const filtered = combinedItems.filter(item => {
+      const matchSearch = item.name.toLowerCase().includes(searchTerm) || 
+                          item.code.toLowerCase().includes(searchTerm) || 
+                          item.brandModel.toLowerCase().includes(searchTerm);
+
+      let matchType = true;
+      if (typeFilter === 'phones') matchType = item.type === 'phone';
+      if (typeFilter === 'accessories') matchType = item.type === 'accessory';
+      if (typeFilter === 'low') matchType = item.isLow || item.stock === 0;
+
+      return matchSearch && matchType;
+    });
+
+    tbody.innerHTML = filtered.map(item => `
+      <tr>
+        <td><strong style="color:var(--primary); font-size:12px;">${item.code}</strong></td>
+        <td>
+          <div style="font-weight:700;">${item.name}</div>
+          <div style="font-size:11px; color:var(--text-muted);">${item.brandModel}</div>
+        </td>
+        <td><span class="badge ${item.categoryBadge}">${item.typeLabel}</span></td>
+        <td>${CurrencyFormatter.format(item.purchaseCost, AppState.settings.currency)}</td>
+        <td><strong style="color:var(--accent-emerald);">${CurrencyFormatter.format(item.sellingPrice, AppState.settings.currency)}</strong></td>
+        <td>
+          <strong style="font-size:14px; ${item.stock === 0 ? 'color:var(--accent-rose);' : ''}">${item.stock}</strong>
+        </td>
+        <td><strong>${CurrencyFormatter.format(item.totalVal, AppState.settings.currency)}</strong></td>
+        <td>
+          <span class="badge ${item.stock === 0 ? 'badge-danger' : (item.isLow ? 'badge-warning' : 'badge-success')}">
+            ${item.stock === 0 ? 'نفذت الكمية' : (item.isLow ? 'مخزون منخفض' : 'متوفر بالمخزن')}
+          </span>
+        </td>
+        <td>
+          <div style="display:flex; gap:4px;">
+            <button class="btn btn-secondary btn-icon" onclick="UIController.quickAdjustStock('${item.type}', '${item.id}')" title="تعديل الكمية والمخزون"><i class="fa-solid fa-pen-to-square"></i></button>
+            ${item.type === 'phone' ? 
+              `<button class="btn btn-secondary btn-icon" onclick="UIController.editPhone('${item.id}')" title="تعديل الهاتف"><i class="fa-solid fa-pen"></i></button>` : 
+              `<button class="btn btn-danger btn-icon" onclick="UIController.deleteAccessory('${item.id}')" title="حذف"><i class="fa-solid fa-trash"></i></button>`
+            }
+          </div>
+        </td>
+      </tr>
+    `).join('') || `<tr><td colspan="9" style="text-align:center; color:var(--text-muted);">لا توجد منتجات مطابقة لفلتر البحث</td></tr>`;
+  },
+
   renderCustomersTable() {
     const tbody = document.getElementById("customersTableBody");
     if (!tbody) return;
@@ -760,14 +866,23 @@ const RenderEngine = {
         <td><strong>${c.name}</strong></td>
         <td>${c.phone}</td>
         <td>${c.address || '-'}</td>
-        <td>${CurrencyFormatter.format(c.totalPurchases, AppState.settings.currency)}</td>
-        <td>${CurrencyFormatter.format(c.totalPaid, AppState.settings.currency)}</td>
-        <td><span class="badge ${c.totalDebt > 0 ? 'badge-danger' : 'badge-success'}">${CurrencyFormatter.format(c.totalDebt, AppState.settings.currency)}</span></td>
+        <td>${CurrencyFormatter.format(c.totalPurchases || 0, AppState.settings.currency)}</td>
+        <td>${CurrencyFormatter.format(c.totalPaid || 0, AppState.settings.currency)}</td>
         <td>
-          <button class="btn btn-secondary btn-icon" onclick="UIController.viewCustomerStatement('${c.id}')" title="كشف حساب العميل"><i class="fa-solid fa-file-invoice"></i></button>
+          <strong style="color:${(c.totalDebt || 0) > 0 ? 'var(--accent-rose)' : 'var(--accent-emerald)'}; font-size:14.5px;">
+            ${CurrencyFormatter.format(c.totalDebt || 0, AppState.settings.currency)}
+          </strong>
+        </td>
+        <td>
+          <div style="display:flex; gap:4px;">
+            <button class="btn btn-warning btn-icon" onclick="UIController.openDebtModal('${c.id}')" title="تسديد وتعديل الدين"><i class="fa-solid fa-coins"></i></button>
+            <button class="btn btn-secondary btn-icon" onclick="UIController.editCustomer('${c.id}')" title="تعديل بيانات العميل"><i class="fa-solid fa-user-pen"></i></button>
+            <button class="btn btn-secondary btn-icon" onclick="UIController.viewCustomerStatement('${c.id}')" title="كشف حساب العميل"><i class="fa-solid fa-file-invoice"></i></button>
+            <button class="btn btn-danger btn-icon" onclick="UIController.deleteCustomer('${c.id}')" title="حذف العميل"><i class="fa-solid fa-trash"></i></button>
+          </div>
         </td>
       </tr>
-    `).join('');
+    `).join('') || `<tr><td colspan="7" style="text-align:center; color:var(--text-muted);">لا يوجد عملاء مسجلين حالياً</td></tr>`;
   },
 
   renderSuppliersTable() {
@@ -1330,6 +1445,10 @@ const UIController = {
     if (targetMenu) targetMenu.classList.add("active");
 
     RenderEngine.renderDashboard();
+    if (pageId === "inventory") RenderEngine.renderInventoryTable();
+    if (pageId === "customers") RenderEngine.renderCustomersTable();
+    if (pageId === "phones") RenderEngine.renderPhonesTable();
+    if (pageId === "accessories") RenderEngine.renderAccessoriesTable();
   },
 
   openModal(id) {
@@ -1398,11 +1517,13 @@ const UIController = {
       name: document.getElementById("phoneName").value,
       brand: document.getElementById("phoneBrand").value,
       model: document.getElementById("phoneModel").value,
+      color: document.getElementById("phoneColor").value,
+      storage: document.getElementById("phoneStorage").value,
+      ram: document.getElementById("phoneRam").value,
+      condition: document.getElementById("phoneCondition").value,
+      batteryHealth: document.getElementById("phoneBattery").value,
       imei1: imei1,
       imei2: imei2,
-      serialNumber: document.getElementById("phoneSerial").value,
-      condition: document.getElementById("phoneCondition").value,
-      batteryHealth: Number(document.getElementById("phoneBattery").value) || 100,
       purchasePrice: Number(document.getElementById("phoneCost").value) || 0,
       sellingPrice: Number(document.getElementById("phonePrice").value) || 0,
       stock: Number(document.getElementById("phoneStock").value) || 1,
@@ -1830,6 +1951,35 @@ const ExportEngine = {
         "المسحوبات": p.paidProfit,
         "الرصيد المتبقي": p.balance
       }));
+    } else if (dataType === "inventory") {
+      let invArr = [];
+      AppState.phones.forEach(p => {
+        invArr.push({
+          "الكود / IMEI": p.imei1 || p.barcode || p.id,
+          "اسم المنتج": p.name,
+          "النوع": "هاتف ذكي",
+          "الماركة": p.brand,
+          "سعر الشراء (MRU)": p.purchasePrice,
+          "سعر البيع (MRU)": p.sellingPrice,
+          "الكمية المتبقية": p.stock,
+          "إجمالي تكلفة الأصناف": p.purchasePrice * p.stock,
+          "حالة المخزون": p.stock > 0 ? "متوفر بالمخزن" : "نفذت الكمية"
+        });
+      });
+      AppState.accessories.forEach(a => {
+        invArr.push({
+          "الكود / SKU": a.sku || a.id,
+          "اسم المنتج": a.name,
+          "النوع": "إكسسوار",
+          "الماركة": a.brand || a.category,
+          "سعر الشراء (MRU)": a.purchasePrice,
+          "سعر البيع (MRU)": a.sellingPrice,
+          "الكمية المتبقية": a.stock,
+          "إجمالي تكلفة الأصناف": a.purchasePrice * a.stock,
+          "حالة المخزون": a.stock > 0 ? "متوفر بالمخزن" : "نفذت الكمية"
+        });
+      });
+      dataArray = invArr;
     }
 
     if (!dataArray.length) {
@@ -1953,6 +2103,11 @@ window.viewCustomerStatement = (id) => UIController.viewCustomerStatement(id);
 window.viewSupplierStatement = (id) => UIController.viewSupplierStatement(id);
 window.openNewPhoneModal = () => UIController.openNewPhoneModal();
 window.testGitHubToken = () => UIController.testGitHubToken();
+window.openDebtModal = (id) => UIController.openDebtModal(id);
+window.editCustomer = (id) => UIController.editCustomer(id);
+window.deleteCustomer = (id) => UIController.deleteCustomer(id);
+window.openNewCustomerModal = () => UIController.openNewCustomerModal();
+window.quickAdjustStock = (type, id) => UIController.quickAdjustStock(type, id);
 
 document.addEventListener("DOMContentLoaded", () => {
   UIController.init();
