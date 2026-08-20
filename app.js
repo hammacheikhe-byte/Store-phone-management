@@ -14,6 +14,22 @@ const CurrencyFormatter = {
   }
 };
 
+// GitHub Token Cleaning & UTF-8 Base64 Helpers
+function cleanGitHubToken(tokenStr) {
+  if (!tokenStr) return "";
+  return String(tokenStr)
+    .trim()
+    .replace(/^["'\s]+|["'\s]+$/g, '')
+    .replace(/^Bearer\s+/i, '')
+    .replace(/^token\s+/i, '');
+}
+
+function utf8ToBase64(str) {
+  return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, function(match, p1) {
+    return String.fromCharCode('0x' + p1);
+  }));
+}
+
 // Global Application State
 let AppState = {
   isInitialized: false,
@@ -363,9 +379,26 @@ const POSCartEngine = {
     this.recalculate();
   },
 
+  fillFullPayment() {
+    const totalVal = parseFloat(document.getElementById("cartTotal")?.textContent.replace(/[^0-9.]/g, '') || 0);
+    const paidInput = document.getElementById("posPaidInput");
+    if (paidInput) paidInput.value = totalVal;
+    this.recalculate();
+  },
+
+  fillCreditPayment() {
+    const paidInput = document.getElementById("posPaidInput");
+    if (paidInput) paidInput.value = 0;
+    this.recalculate();
+  },
+
   clearCart() {
     this.cart = [];
     this.discount = 0;
+    const discInput = document.getElementById("posDiscountInput");
+    if (discInput) discInput.value = 0;
+    const paidInput = document.getElementById("posPaidInput");
+    if (paidInput) paidInput.value = "";
     this.recalculate();
   },
 
@@ -460,6 +493,7 @@ const RenderEngine = {
     this.applyThemeAndColors();
     this.renderDashboard();
     this.renderPOSProducts();
+    this.renderPOSCustomersDropdown();
     this.renderPhonesTable();
     this.renderAccessoriesTable();
     this.renderCustomersTable();
@@ -582,30 +616,91 @@ const RenderEngine = {
     grid.innerHTML = html || `<div style="grid-column: 1/-1; text-align:center; padding:40px; color:var(--text-muted);">لا توجد منتجات مطابقة للبحث</div>`;
   },
 
+  renderPOSCustomersDropdown() {
+    const select = document.getElementById("posCustomerSelect");
+    if (!select) return;
+
+    const currentVal = select.value;
+    let html = `<option value="">عميل نقدي مباشر (Cash Customer)</option>`;
+    (AppState.customers || []).forEach(c => {
+      const debtLabel = c.totalDebt > 0 ? ` (مدين: ${CurrencyFormatter.format(c.totalDebt, AppState.settings.currency)})` : '';
+      html += `<option value="${c.id}">${c.name} - ${c.phone}${debtLabel}</option>`;
+    });
+    select.innerHTML = html;
+    if (currentVal) select.value = currentVal;
+  },
+
   renderPOSCart(cartData) {
     const list = document.getElementById("posCartItemsList");
     if (!list) return;
 
-    list.innerHTML = cartData.items.map((item, idx) => `
-      <div class="cart-item">
-        <div style="flex:1;">
-          <div style="font-weight:700; font-size:13px;">${item.name}</div>
-          ${item.isPhone ? `<div style="font-size:11px; color:var(--accent-cyan);">IMEI: ${item.selectedIMEI || 'غير محدد'}</div>` : ''}
-          <div style="font-weight:800; color:var(--accent-emerald); font-size:13px; margin-top:2px;">
-            ${CurrencyFormatter.format(item.price - item.discount, AppState.settings.currency)}
+    const countBadge = document.getElementById("cartCountBadge");
+    const totalItemsCount = cartData.items.reduce((sum, i) => sum + i.qty, 0);
+    if (countBadge) countBadge.textContent = `${totalItemsCount} منتج`;
+
+    if (cartData.items.length === 0) {
+      list.innerHTML = `
+        <div class="empty-cart-state" style="text-align:center; padding:35px 12px; color:var(--text-muted);">
+          <i class="fa-solid fa-cart-flatbed-suitcases" style="font-size:42px; margin-bottom:12px; opacity:0.35;"></i>
+          <p style="font-weight:700; font-size:13.5px; margin-bottom:4px;">السلة فارغة حالياً</p>
+          <p style="font-size:11.5px; opacity:0.8;">اضغط على أي هاتف أو إكسسوار من القائمة لإضافته</p>
+        </div>
+      `;
+    } else {
+      list.innerHTML = cartData.items.map((item, idx) => {
+        const phoneObj = AppState.phones.find(p => p.id === item.id);
+        let imeiSelector = '';
+        if (item.isPhone && phoneObj) {
+          const imei1Val = phoneObj.imei1;
+          const imei2Val = phoneObj.imei2;
+          if (imei1Val && imei2Val) {
+            imeiSelector = `
+              <select class="form-control" style="height:26px; font-size:10.5px; padding:0 4px; margin-top:2px; color:var(--accent-cyan);" onchange="POSCartEngine.cart[${idx}].selectedIMEI = this.value; POSCartEngine.recalculate();">
+                <option value="${imei1Val}" ${item.selectedIMEI === imei1Val ? 'selected' : ''}>IMEI 1: ${imei1Val}</option>
+                <option value="${imei2Val}" ${item.selectedIMEI === imei2Val ? 'selected' : ''}>IMEI 2: ${imei2Val}</option>
+              </select>
+            `;
+          } else {
+            imeiSelector = `<div style="font-size:11px; color:var(--accent-cyan); font-weight:700;">IMEI: ${item.selectedIMEI || imei1Val || '-'}</div>`;
+          }
+        }
+
+        const itemLineTotal = (item.price - item.discount) * item.qty;
+
+        return `
+          <div class="cart-item" style="background:var(--bg-input); padding:10px; border-radius:8px; border:1px solid var(--border-color); margin-bottom:8px;">
+            <div style="flex:1;">
+              <div style="font-weight:700; font-size:13px; color:var(--text-main);">${item.name}</div>
+              ${imeiSelector}
+              <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+                <span style="font-weight:800; color:var(--accent-emerald); font-size:13px;">${CurrencyFormatter.format(item.price, AppState.settings.currency)}</span>
+                ${item.discount > 0 ? `<span style="font-size:11px; color:var(--accent-rose); text-decoration:line-through;">خصم: ${item.discount}</span>` : ''}
+              </div>
+            </div>
+            <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
+              <div style="display:flex; align-items:center; gap:6px;">
+                <button class="btn btn-secondary btn-icon" style="width:24px; height:24px; font-size:12px;" onclick="POSCartEngine.cart[${idx}].qty = Math.max(1, POSCartEngine.cart[${idx}].qty - 1); POSCartEngine.recalculate();">-</button>
+                <span style="font-weight:800; font-size:13px; min-width:18px; text-align:center;">${item.qty}</span>
+                <button class="btn btn-secondary btn-icon" style="width:24px; height:24px; font-size:12px;" onclick="POSCartEngine.cart[${idx}].qty += 1; POSCartEngine.recalculate();">+</button>
+                <button class="btn btn-danger btn-icon" style="width:24px; height:24px; font-size:12px;" onclick="POSCartEngine.removeItem(${idx})" title="حذف العنصر"><i class="fa-solid fa-trash"></i></button>
+              </div>
+              <div style="font-weight:800; font-size:12px; color:var(--primary);">الإجمالي: ${CurrencyFormatter.format(itemLineTotal, AppState.settings.currency)}</div>
+            </div>
           </div>
-        </div>
-        <div style="display:flex; align-items:center; gap:8px;">
-          <button class="btn btn-secondary btn-icon" style="width:26px; height:26px;" onclick="POSCartEngine.cart[${idx}].qty = Math.max(1, POSCartEngine.cart[${idx}].qty - 1); POSCartEngine.recalculate();">-</button>
-          <span style="font-weight:700; font-size:13px;">${item.qty}</span>
-          <button class="btn btn-secondary btn-icon" style="width:26px; height:26px;" onclick="POSCartEngine.cart[${idx}].qty += 1; POSCartEngine.recalculate();">+</button>
-          <button class="btn btn-danger btn-icon" style="width:26px; height:26px;" onclick="POSCartEngine.removeItem(${idx})"><i class="fa-solid fa-trash"></i></button>
-        </div>
-      </div>
-    `).join('');
+        `;
+      }).join('');
+    }
 
     if (document.getElementById("cartSubtotal")) document.getElementById("cartSubtotal").textContent = CurrencyFormatter.format(cartData.subtotal, AppState.settings.currency);
     if (document.getElementById("cartTotal")) document.getElementById("cartTotal").textContent = CurrencyFormatter.format(cartData.total, AppState.settings.currency);
+
+    const paidInputVal = Number(document.getElementById("posPaidInput")?.value) || 0;
+    const remainingDebt = Math.max(0, cartData.total - paidInputVal);
+    const debtEl = document.getElementById("cartRemainingDebt");
+    if (debtEl) {
+      debtEl.textContent = CurrencyFormatter.format(remainingDebt, AppState.settings.currency);
+      debtEl.style.color = remainingDebt > 0 ? "var(--accent-rose)" : "var(--accent-emerald)";
+    }
   },
 
   renderPhonesTable() {
@@ -1023,9 +1118,119 @@ const UIController = {
     this.openModal("statementModal");
   },
 
+  toggleTokenVisibility() {
+    const input = document.getElementById("setGithubToken");
+    const icon = document.getElementById("tokenEyeIcon");
+    if (!input) return;
+    if (input.type === "password") {
+      input.type = "text";
+      if (icon) icon.className = "fa-solid fa-eye-slash";
+    } else {
+      input.type = "password";
+      if (icon) icon.className = "fa-solid fa-eye";
+    }
+  },
+
+  cleanInputToken(inputEl) {
+    if (!inputEl) return;
+    const cleaned = cleanGitHubToken(inputEl.value);
+    if (inputEl.value !== cleaned && cleaned.length > 0) {
+      inputEl.value = cleaned;
+    }
+  },
+
+  async testGitHubToken() {
+    const inputToken = document.getElementById("setGithubToken")?.value || AppState.settings.githubToken;
+    const token = cleanGitHubToken(inputToken);
+    const repo = (document.getElementById("setGithubRepo")?.value || AppState.settings.githubRepo || "Store-phone-management").trim();
+    const user = (AppState.settings.githubUser || "hammacheikhe-byte").trim();
+    const statusEl = document.getElementById("githubSyncStatus");
+
+    if (!token) {
+      if (statusEl) {
+        statusEl.style.background = "rgba(244,63,94,0.15)";
+        statusEl.style.color = "var(--accent-rose)";
+        statusEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> يرجى إدخال رمز GitHub Token في الخانة أعلاه قبل الاختبار.`;
+      }
+      this.showToast("يرجى إدخال التوكن أولاً.", "warning");
+      return;
+    }
+
+    if (statusEl) {
+      statusEl.style.background = "rgba(59,130,246,0.15)";
+      statusEl.style.color = "var(--primary)";
+      statusEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> جاري فحص واختبار التوكن مع GitHub...`;
+    }
+
+    try {
+      let authHeader = `Bearer ${token}`;
+      let testRes = await fetch("https://api.github.com/user", {
+        headers: {
+          "Authorization": authHeader,
+          "Accept": "application/vnd.github.v3+json",
+          "X-GitHub-Api-Version": "2022-11-28"
+        }
+      });
+
+      if (testRes.status === 401) {
+        authHeader = `token ${token}`;
+        testRes = await fetch("https://api.github.com/user", {
+          headers: {
+            "Authorization": authHeader,
+            "Accept": "application/vnd.github.v3+json"
+          }
+        });
+      }
+
+      if (!testRes.ok) {
+        if (testRes.status === 401) {
+          throw new Error("رمز التوكن غير صحيح أو انتهت صلاحيته (401 Unauthorized - Bad credentials)");
+        } else if (testRes.status === 403) {
+          throw new Error("التوكن غير مصرح له أو تجاوز حد الطلبات (403 Forbidden)");
+        } else {
+          throw new Error(`خطأ في الاستجابة من GitHub (رمز ${testRes.status})`);
+        }
+      }
+
+      const userData = await testRes.json();
+      const authenticatedUser = userData.login || user;
+
+      const repoRes = await fetch(`https://api.github.com/repos/${user}/${repo}`, {
+        headers: {
+          "Authorization": authHeader,
+          "Accept": "application/vnd.github.v3+json",
+          "X-GitHub-Api-Version": "2022-11-28"
+        }
+      });
+
+      if (repoRes.status === 404) {
+        throw new Error(`التوكن صحيح للحساب "${authenticatedUser}"، لكن المستودع "${repo}" غير موجود بالحساب "${user}" أو ينقص التوكن صلاحية 'repo'`);
+      }
+
+      AppState.settings.githubToken = token;
+      AppState.settings.githubRepo = repo;
+      DataRepository.saveState();
+
+      if (statusEl) {
+        statusEl.style.background = "rgba(16,185,129,0.15)";
+        statusEl.style.color = "var(--accent-emerald)";
+        statusEl.innerHTML = `<i class="fa-solid fa-circle-check"></i> تم فحص التوكن بنجاح 100%! التوكن نشط للحساب (${authenticatedUser}) ومصرح له بالمزامنة على المستودع (${repo}).`;
+      }
+      this.showToast(`تم التثبت من صحة التوكن والمستودع ${repo} بنجاح!`, "success");
+
+    } catch (err) {
+      if (statusEl) {
+        statusEl.style.background = "rgba(244,63,94,0.15)";
+        statusEl.style.color = "var(--accent-rose)";
+        statusEl.innerHTML = `<i class="fa-solid fa-circle-xmark"></i> تعذر الاعتماد: ${err.message}`;
+      }
+      this.showToast(`فشل اختبار التوكن: ${err.message}`, "danger");
+    }
+  },
+
   async syncWithGitHubCloud(silent = false) {
     const rawToken = document.getElementById("setGithubToken")?.value || AppState.settings.githubToken;
-    const token = (rawToken || "").trim();
+    const token = cleanGitHubToken(rawToken);
     const repo = (document.getElementById("setGithubRepo")?.value || AppState.settings.githubRepo || "Store-phone-management").trim();
     const user = (AppState.settings.githubUser || "hammacheikhe-byte").trim();
 
@@ -1039,34 +1244,51 @@ const UIController = {
     DataRepository.saveState();
 
     const statusEl = document.getElementById("githubSyncStatus");
-    if (statusEl) statusEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> جاري الاتصال بمستودع GitHub (${user}/${repo})...`;
+    if (statusEl) {
+      statusEl.style.background = "rgba(59,130,246,0.15)";
+      statusEl.style.color = "var(--primary)";
+      statusEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> جاري رفع ومزامنة شحنة البيانات إلى GitHub (${user}/${repo})...`;
+    }
 
     try {
-      const contentStr = btoa(unescape(encodeURIComponent(JSON.stringify(AppState, null, 2))));
+      const contentStr = utf8ToBase64(JSON.stringify(AppState, null, 2));
       const apiUrl = `https://api.github.com/repos/${user}/${repo}/contents/dashboard-pos-data.json`;
 
-      const headers = {
-        "Authorization": `Bearer ${token}`,
-        "Accept": "application/vnd.github.v3+json",
-        "Content-Type": "application/json"
-      };
+      let authHeader = `Bearer ${token}`;
+      let getRes = await fetch(apiUrl, {
+        headers: {
+          "Authorization": authHeader,
+          "Accept": "application/vnd.github.v3+json",
+          "X-GitHub-Api-Version": "2022-11-28"
+        }
+      });
+
+      if (getRes.status === 401) {
+        authHeader = `token ${token}`;
+        getRes = await fetch(apiUrl, {
+          headers: {
+            "Authorization": authHeader,
+            "Accept": "application/vnd.github.v3+json"
+          }
+        });
+      }
 
       let sha = "";
-      try {
-        const getRes = await fetch(apiUrl, { headers });
-        if (getRes.ok) {
-          const fileData = await getRes.json();
-          sha = fileData.sha;
-        } else if (getRes.status === 401) {
-          throw new Error("خطأ 401: التوكن غير صحيح أو انتهت صلاحيته (Unauthorized)");
-        }
-      } catch (e) {
-        if (e.message.includes("401")) throw e;
+      if (getRes.ok) {
+        const fileData = await getRes.json();
+        sha = fileData.sha;
+      } else if (getRes.status === 401) {
+        throw new Error("رمز التوكن غير صحيح أو انتهت صلاحيته (401 Bad credentials)");
       }
 
       const putRes = await fetch(apiUrl, {
         method: "PUT",
-        headers,
+        headers: {
+          "Authorization": authHeader,
+          "Accept": "application/vnd.github.v3+json",
+          "Content-Type": "application/json",
+          "X-GitHub-Api-Version": "2022-11-28"
+        },
         body: JSON.stringify({
           message: `Auto Sync database snapshot at ${new Date().toISOString()}`,
           content: contentStr,
@@ -1075,21 +1297,29 @@ const UIController = {
       });
 
       if (putRes.ok) {
-        if (statusEl) statusEl.innerHTML = `<i class="fa-solid fa-cloud-check"></i> تمت المزامنة بنجاح وحفظ البيانات على سحابة GitHub (${repo})!`;
+        if (statusEl) {
+          statusEl.style.background = "rgba(16,185,129,0.15)";
+          statusEl.style.color = "var(--accent-emerald)";
+          statusEl.innerHTML = `<i class="fa-solid fa-cloud-check"></i> تمت المزامنة السحابية بنجاح! تم حفظ شحنة البيانات على سحابة GitHub (${repo}).`;
+        }
         if (!silent) this.showToast("تمت المزامنة السحابية وحفظ نسخة البيانات على GitHub بنجاح!", "success");
         AuditLogEngine.log("مزامنة GitHub", `تم حفظ النسخة السحابية على مستودع ${repo}.`);
       } else {
         const errJson = await putRes.json().catch(() => ({}));
         let detailMsg = errJson.message || `رمز الاستجابة ${putRes.status}`;
         if (putRes.status === 404) {
-          detailMsg = `المستودع "${repo}" غير موجود بالحساب "${user}" أو التوكن ينقصه صلاحية 'repo'`;
+          detailMsg = `المستودع "${repo}" غير موجود بالحساب "${user}" أو ينقص التوكن صلاحية 'repo'`;
         } else if (putRes.status === 401) {
           detailMsg = "التوكن غير صحيح أو انتهت صلاحيته";
         }
         throw new Error(detailMsg);
       }
     } catch (err) {
-      if (statusEl) statusEl.innerHTML = `<i class="fa-solid fa-cloud-xmark" style="color:var(--accent-rose);"></i> تعذرت المزامنة: ${err.message}`;
+      if (statusEl) {
+        statusEl.style.background = "rgba(244,63,94,0.15)";
+        statusEl.style.color = "var(--accent-rose)";
+        statusEl.innerHTML = `<i class="fa-solid fa-cloud-xmark"></i> تعذرت المزامنة: ${err.message}`;
+      }
       if (!silent) this.showToast(`تعذر الاتصال بـ GitHub: ${err.message}`, "danger");
     }
   },
@@ -1238,6 +1468,7 @@ const UIController = {
     AppState.customers.unshift(newCust);
     DataRepository.saveState();
     RenderEngine.renderCustomersTable();
+    RenderEngine.renderPOSCustomersDropdown();
     this.closeModal("customerModal");
     this.showToast("تم إضافة العميل بنجاح", "success");
   },
@@ -1726,6 +1957,7 @@ window.editPhone = (id) => UIController.editPhone(id);
 window.viewCustomerStatement = (id) => UIController.viewCustomerStatement(id);
 window.viewSupplierStatement = (id) => UIController.viewSupplierStatement(id);
 window.openNewPhoneModal = () => UIController.openNewPhoneModal();
+window.testGitHubToken = () => UIController.testGitHubToken();
 
 document.addEventListener("DOMContentLoaded", () => {
   UIController.init();
