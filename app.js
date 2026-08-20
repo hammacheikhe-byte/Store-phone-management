@@ -1167,8 +1167,7 @@ const UIController = {
       let testRes = await fetch("https://api.github.com/user", {
         headers: {
           "Authorization": authHeader,
-          "Accept": "application/vnd.github.v3+json",
-          "X-GitHub-Api-Version": "2022-11-28"
+          "Accept": "application/vnd.github.v3+json"
         }
       });
 
@@ -1198,8 +1197,7 @@ const UIController = {
       const repoRes = await fetch(`https://api.github.com/repos/${user}/${repo}`, {
         headers: {
           "Authorization": authHeader,
-          "Accept": "application/vnd.github.v3+json",
-          "X-GitHub-Api-Version": "2022-11-28"
+          "Accept": "application/vnd.github.v3+json"
         }
       });
 
@@ -1214,7 +1212,7 @@ const UIController = {
       if (statusEl) {
         statusEl.style.background = "rgba(16,185,129,0.15)";
         statusEl.style.color = "var(--accent-emerald)";
-        statusEl.innerHTML = `<i class="fa-solid fa-circle-check"></i> تم فحص التوكن بنجاح 100%! التوكن نشط للحساب (${authenticatedUser}) ومصرح له بالمزامنة على المستودع (${repo}).`;
+        statusEl.innerHTML = `<i class="fa-solid fa-circle-check"></i> تم التثبت من التوكن بنجاح 100%! التوكن نشط للحساب (${authenticatedUser}) ومصرح له بالمزامنة على المستودع (${repo}).`;
       }
       this.showToast(`تم التثبت من صحة التوكن والمستودع ${repo} بنجاح!`, "success");
 
@@ -1258,8 +1256,7 @@ const UIController = {
       let getRes = await fetch(apiUrl, {
         headers: {
           "Authorization": authHeader,
-          "Accept": "application/vnd.github.v3+json",
-          "X-GitHub-Api-Version": "2022-11-28"
+          "Accept": "application/vnd.github.v3+json"
         }
       });
 
@@ -1285,9 +1282,7 @@ const UIController = {
         method: "PUT",
         headers: {
           "Authorization": authHeader,
-          "Accept": "application/vnd.github.v3+json",
-          "Content-Type": "application/json",
-          "X-GitHub-Api-Version": "2022-11-28"
+          "Accept": "application/vnd.github.v3+json"
         },
         body: JSON.stringify({
           message: `Auto Sync database snapshot at ${new Date().toISOString()}`,
