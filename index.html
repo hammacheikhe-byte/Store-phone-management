@@ -493,20 +493,51 @@
         <section id="customersPage" class="page-view">
           <div class="section-header">
             <div class="section-title">
-              <h2><i class="fa-solid fa-users" style="color:var(--accent-cyan);"></i> سجل العملاء والديون المستحقة</h2>
-              <p>تتبع مشتريات العملاء، الديون القائمة، وكشوف الحسابات التفصيلية</p>
+              <h2><i class="fa-solid fa-users" style="color:var(--accent-cyan);"></i> سجل العملاء وتسديد الديون المستحقة</h2>
+              <p>متابعة مشتريات العملاء، تسديد الديون، تعديل البيانات، واستخراج كشوف الحسابات</p>
             </div>
             <div class="section-actions">
               <button class="btn btn-secondary btn-sm" onclick="ExportEngine.exportToExcel('customers')"><i class="fa-solid fa-file-excel" style="color:#10b981;"></i> تصدير Excel</button>
               <button class="btn btn-secondary btn-sm" onclick="ExportEngine.exportToPDF('customersTableCard', 'تقرير_العملاء_والديون')"><i class="fa-solid fa-file-pdf" style="color:#f43f5e;"></i> تصدير PDF</button>
-              <button class="btn btn-primary btn-sm" onclick="UIController.openModal('customerModal')"><i class="fa-solid fa-user-plus"></i> إضافة عميل جديد</button>
+              <button class="btn btn-primary btn-sm" onclick="UIController.openNewCustomerModal()"><i class="fa-solid fa-user-plus"></i> + إضافة عميل جديد</button>
             </div>
           </div>
+
+          <!-- Customer Summary KPI Cards -->
+          <div class="kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-bottom:20px;">
+            <div class="kpi-card">
+              <div class="kpi-header"><span class="kpi-title">إجمالي عدد العملاء</span><div class="kpi-icon primary"><i class="fa-solid fa-users"></i></div></div>
+              <div class="kpi-body"><div class="kpi-value" id="custTotalCount" style="font-size:22px;">0 عميل</div></div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-header"><span class="kpi-title">إجمالي الديون القائمة على العملاء</span><div class="kpi-icon danger"><i class="fa-solid fa-hand-holding-dollar"></i></div></div>
+              <div class="kpi-body"><div class="kpi-value" id="custTotalDebtsSum" style="font-size:22px; color:var(--accent-rose);">0 MRU</div></div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-header"><span class="kpi-title">إجمالي مدفوعات العملاء</span><div class="kpi-icon success"><i class="fa-solid fa-money-bill-trend-up"></i></div></div>
+              <div class="kpi-body"><div class="kpi-value" id="custTotalPaidSum" style="font-size:22px; color:var(--accent-emerald);">0 MRU</div></div>
+            </div>
+          </div>
+
           <div class="card-box" id="customersTableCard">
+            <!-- Customer Search Bar -->
+            <div style="margin-bottom:16px; display:flex; gap:12px;">
+              <input type="text" id="customersSearchInput" class="form-control" placeholder="ابحث باسم العميل أو رقم الهاتف أو العنوان..." oninput="RenderEngine.renderCustomersTable()" style="max-width:400px;" />
+            </div>
+
             <div class="table-responsive">
               <table class="custom-table">
                 <thead>
-                  <tr><th>الاسم</th><th>الهاتف</th><th>العنوان</th><th>إجمالي المشتريات</th><th>إجمالي المدفوع</th><th>الديون المستحقة</th><th>كشف الحساب</th></tr>
+                  <tr>
+                    <th>اسم العميل</th>
+                    <th>رقم الهاتف</th>
+                    <th>العنوان</th>
+                    <th>إجمالي المشتريات</th>
+                    <th>إجمالي المدفوع</th>
+                    <th>الديون المستحقة</th>
+                    <th style="text-align:center;">تسديد وتعديل الدين</th>
+                    <th style="text-align:center;">إدارة بيانات العميل وكشف الحساب</th>
+                  </tr>
                 </thead>
                 <tbody id="customersTableBody"></tbody>
               </table>
@@ -1046,6 +1077,6 @@
   <!-- PDF Export Engine (html2pdf) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <!-- Core App Logic -->
-  <script src="app.js?v=3.0.9"></script>
+  <script src="app.js?v=3.1.0"></script>
 </body>
 </html>

@@ -861,28 +861,61 @@ const RenderEngine = {
     const tbody = document.getElementById("customersTableBody");
     if (!tbody) return;
 
-    tbody.innerHTML = AppState.customers.map(c => `
+    const searchTerm = (document.getElementById("customersSearchInput")?.value || "").toLowerCase().trim();
+
+    // Calculate Summary Stats
+    const totalCount = AppState.customers.length;
+    let totalDebts = 0;
+    let totalPaid = 0;
+
+    AppState.customers.forEach(c => {
+      totalDebts += (Number(c.totalDebt) || 0);
+      totalPaid += (Number(c.totalPaid) || 0);
+    });
+
+    if (document.getElementById("custTotalCount")) document.getElementById("custTotalCount").textContent = totalCount + " عميل";
+    if (document.getElementById("custTotalDebtsSum")) document.getElementById("custTotalDebtsSum").textContent = CurrencyFormatter.format(totalDebts, AppState.settings.currency);
+    if (document.getElementById("custTotalPaidSum")) document.getElementById("custTotalPaidSum").textContent = CurrencyFormatter.format(totalPaid, AppState.settings.currency);
+
+    const filtered = AppState.customers.filter(c => {
+      const matchName = (c.name || "").toLowerCase().includes(searchTerm);
+      const matchPhone = (c.phone || "").toLowerCase().includes(searchTerm);
+      const matchAddress = (c.address || "").toLowerCase().includes(searchTerm);
+      return matchName || matchPhone || matchAddress;
+    });
+
+    tbody.innerHTML = filtered.map(c => `
       <tr>
         <td><strong>${c.name}</strong></td>
-        <td>${c.phone}</td>
+        <td><span style="direction:ltr; font-weight:700; color:var(--primary);">${c.phone}</span></td>
         <td>${c.address || '-'}</td>
         <td>${CurrencyFormatter.format(c.totalPurchases || 0, AppState.settings.currency)}</td>
-        <td>${CurrencyFormatter.format(c.totalPaid || 0, AppState.settings.currency)}</td>
+        <td><strong style="color:var(--accent-emerald);">${CurrencyFormatter.format(c.totalPaid || 0, AppState.settings.currency)}</strong></td>
         <td>
           <strong style="color:${(c.totalDebt || 0) > 0 ? 'var(--accent-rose)' : 'var(--accent-emerald)'}; font-size:14.5px;">
             ${CurrencyFormatter.format(c.totalDebt || 0, AppState.settings.currency)}
           </strong>
         </td>
-        <td>
-          <div style="display:flex; gap:4px;">
-            <button class="btn btn-warning btn-icon" onclick="UIController.openDebtModal('${c.id}')" title="تسديد وتعديل الدين"><i class="fa-solid fa-coins"></i></button>
-            <button class="btn btn-secondary btn-icon" onclick="UIController.editCustomer('${c.id}')" title="تعديل بيانات العميل"><i class="fa-solid fa-user-pen"></i></button>
-            <button class="btn btn-secondary btn-icon" onclick="UIController.viewCustomerStatement('${c.id}')" title="كشف حساب العميل"><i class="fa-solid fa-file-invoice"></i></button>
-            <button class="btn btn-danger btn-icon" onclick="UIController.deleteCustomer('${c.id}')" title="حذف العميل"><i class="fa-solid fa-trash"></i></button>
+        <td style="text-align:center;">
+          <button class="btn btn-warning btn-sm" onclick="UIController.openDebtModal('${c.id}')" style="font-weight:700;">
+            <i class="fa-solid fa-coins"></i> تسديد / تعديل الدين
+          </button>
+        </td>
+        <td style="text-align:center;">
+          <div style="display:flex; justify-content:center; gap:6px;">
+            <button class="btn btn-secondary btn-sm" onclick="UIController.editCustomer('${c.id}')" title="تعديل اسم العميل وهاتفه">
+              <i class="fa-solid fa-user-pen"></i> تعديل
+            </button>
+            <button class="btn btn-primary btn-sm" onclick="UIController.viewCustomerStatement('${c.id}')" title="عرض كشف الحساب التفصيلي">
+              <i class="fa-solid fa-file-invoice"></i> كشف الحساب
+            </button>
+            <button class="btn btn-danger btn-icon" style="width:30px; height:30px;" onclick="UIController.deleteCustomer('${c.id}')" title="حذف العميل">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
           </div>
         </td>
       </tr>
-    `).join('') || `<tr><td colspan="7" style="text-align:center; color:var(--text-muted);">لا يوجد عملاء مسجلين حالياً</td></tr>`;
+    `).join('') || `<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding:20px;">لا يوجد عملاء مطبقين لشرط البحث</td></tr>`;
   },
 
   renderSuppliersTable() {
